@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
 import { Layout, Menu, theme, Typography } from 'antd';
 import {
-  ScanOutlined,
   SettingOutlined,
   DashboardOutlined,
+  FolderOpenOutlined,
 } from '@ant-design/icons';
 import { BrowserRouter as Router, Routes, Route, Link, useLocation } from 'react-router-dom';
 import Dashboard from './pages/Dashboard';
@@ -16,7 +16,7 @@ const { Title } = Typography;
 const MainLayout: React.FC = () => {
   const [collapsed, setCollapsed] = useState(false);
   const location = useLocation();
-  const { token: { colorBgContainer, borderRadiusLG } } = theme.useToken();
+  const { token: { colorBgContainer } } = theme.useToken();
 
   return (
     <Layout style={{ minHeight: '100vh' }}>

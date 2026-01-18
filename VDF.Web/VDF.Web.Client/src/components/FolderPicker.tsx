@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Modal, Tree, Button, Input } from 'antd';
+import { Modal, Tree } from 'antd';
 import { FolderOpenOutlined, HddOutlined } from '@ant-design/icons';
 import { fileSystem, FileSystemNode } from '../api';
 import { DataNode } from 'antd/es/tree';

@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Card, Table, Image, Button, Tag, Space, Tooltip, Empty } from 'antd';
+import React from 'react';
+import { Card, Table, Image, Button, Space, Empty } from 'antd';
 import { useRequest } from 'ahooks';
 import { scan } from '../api';
 import { FileImageOutlined, VideoCameraOutlined, DeleteOutlined } from '@ant-design/icons';
@@ -20,7 +20,7 @@ interface DuplicateGroup {
 }
 
 const Results: React.FC = () => {
-  const { data, loading, refresh } = useRequest(scan.getResults);
+  const { data, refresh } = useRequest(scan.getResults);
 
   const columns = [
     {

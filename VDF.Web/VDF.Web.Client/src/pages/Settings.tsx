@@ -1,5 +1,5 @@
-import React, { useEffect } from 'react';
-import { Form, InputNumber, Switch, Button, Card, message, Divider, Select } from 'antd';
+import React from 'react';
+import { Form, InputNumber, Switch, Button, Card, message, Divider } from 'antd';
 import { useRequest } from 'ahooks';
 import { settings } from '../api';
 
