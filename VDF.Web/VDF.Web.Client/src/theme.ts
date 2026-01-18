@@ -10,8 +10,8 @@ export const appTheme: ThemeConfig = {
   },
   components: {
     Layout: {
-      colorBgHeader: '#ffffff',
-      colorBgBody: '#f0f2f5',
+      headerBg: '#ffffff',
+      bodyBg: '#f0f2f5',
     },
     Card: {
       borderRadiusLG: 12, // 更圆润的卡片

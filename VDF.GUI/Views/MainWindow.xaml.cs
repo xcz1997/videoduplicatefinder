@@ -28,6 +28,7 @@ using Avalonia.Themes.Fluent;
 using VDF.Core.Utils;
 using VDF.GUI.Data;
 using VDF.GUI.Mvvm;
+using VDF.GUI.ViewModels;
 
 namespace VDF.GUI.Views {
 	public class MainWindow : Window {

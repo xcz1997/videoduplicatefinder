@@ -21,6 +21,10 @@ export const settings = {
   save: (data: any) => api.post('/settings', data),
 };
 
+export const localization = {
+  getList: () => api.get('/localization/list').then(res => res.data),
+};
+
 export interface FileSystemNode {
   name: string;
   path: string;

@@ -7,6 +7,7 @@ import {
   PlusOutlined
 } from '@ant-design/icons';
 import { useRequest } from 'ahooks';
+import { useTranslation } from 'react-i18next';
 import { scan } from '../api';
 import { FolderPicker } from '../components/FolderPicker';
 
@@ -15,6 +16,7 @@ const { Text } = Typography;
 const Dashboard: React.FC = () => {
   const [selectedPaths, setSelectedPaths] = useState<string[]>([]);
   const [showFolderPicker, setShowFolderPicker] = useState(false);
+  const { t } = useTranslation();
 
   // Poll status every 1s
   const { data: status, run: refreshStatus } = useRequest(scan.getStatus, {
@@ -37,7 +39,7 @@ const Dashboard: React.FC = () => {
     <>
       <Row gutter={16} style={{ marginBottom: 24 }}>
         <Col span={8}>
-          <Card bordered={false}>
+          <Card variant="borderless">
             <Statistic
               title="Status"
               value={status?.isScanning ? 'Scanning' : 'Idle'}
@@ -46,21 +48,21 @@ const Dashboard: React.FC = () => {
           </Card>
         </Col>
         <Col span={8}>
-          <Card bordered={false}>
+          <Card variant="borderless">
             <Statistic title="Duplicates Found" value={status?.duplicatesFound || 0} prefix={<FolderOpenOutlined />} />
           </Card>
         </Col>
         <Col span={8}>
-          <Card bordered={false}>
+          <Card variant="borderless">
             <Statistic title="Processed Files" value={status?.processedFiles || 0} suffix={`/ ${status?.totalFiles || 0}`} />
           </Card>
         </Col>
       </Row>
 
-      <Card title="Scan Control" bordered={false} style={{ marginBottom: 24 }}>
+      <Card title={t('Settings.Tab.Scanner')} variant="borderless" style={{ marginBottom: 24 }}>
         <div style={{ marginBottom: 20 }}>
-           <Text strong>Search Directories: </Text>
-           <Button type="link" icon={<PlusOutlined />} onClick={() => setShowFolderPicker(true)}>Add Folder</Button>
+           <Text strong>{t('Settings.SearchDirs')}: </Text>
+           <Button type="link" icon={<PlusOutlined />} onClick={() => setShowFolderPicker(true)}>{t('Settings.Add')}</Button>
            <List
              size="small"
              dataSource={selectedPaths}
@@ -74,10 +76,10 @@ const Dashboard: React.FC = () => {
 
         <Space size="large" style={{ width: '100%', marginBottom: 24 }}>
            <Button type="primary" size="large" icon={<PlayCircleOutlined />} onClick={handleStart} loading={status?.isScanning}>
-             Start Scan
+             {t('Toolbar.Scan')}
            </Button>
            <Button danger size="large" icon={<StopOutlined />} onClick={handleStop} disabled={!status?.isScanning}>
-             Stop
+             {t('Toolbar.Stop')}
            </Button>
         </Space>
 

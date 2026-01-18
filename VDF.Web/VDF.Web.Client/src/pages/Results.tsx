@@ -1,6 +1,7 @@
 import React from 'react';
 import { Card, Table, Image, Button, Space, Empty } from 'antd';
 import { useRequest } from 'ahooks';
+import { useTranslation } from 'react-i18next';
 import { scan } from '../api';
 import { FileImageOutlined, VideoCameraOutlined, DeleteOutlined } from '@ant-design/icons';
 
@@ -21,16 +22,17 @@ interface DuplicateGroup {
 
 const Results: React.FC = () => {
   const { data, refresh } = useRequest(scan.getResults);
+  const { t } = useTranslation();
 
   const columns = [
     {
-      title: 'Group',
+      title: t('DuplicateList.Header.GroupItem'),
       dataIndex: 'groupId',
       key: 'groupId',
       render: (_: string, record: DuplicateGroup, index: number) => `Group #${index + 1} (${record.items.length} items)`,
     },
     {
-      title: 'Total Size',
+      title: t('DuplicateList.Header.Size'),
       key: 'totalSize',
       render: (_: string, record: DuplicateGroup) => {
         const size = record.items.reduce((acc, item) => acc + item.sizeLong, 0);
@@ -38,7 +40,7 @@ const Results: React.FC = () => {
       }
     },
     {
-      title: 'Actions',
+      title: t('Toolbar.Selection'),
       key: 'actions',
       render: () => (
         <Space>
@@ -68,17 +70,17 @@ const Results: React.FC = () => {
                </div>
             )
           },
-          { title: 'Path', dataIndex: 'path', key: 'path', ellipsis: true },
+          { title: t('DuplicateList.Header.Path'), dataIndex: 'path', key: 'path', ellipsis: true },
           { 
-            title: 'Size', 
+            title: t('DuplicateList.Header.Size'), 
             dataIndex: 'sizeLong', 
             key: 'size', 
             width: 100,
             render: (v: number) => (v / 1024 / 1024).toFixed(2) + ' MB',
             sorter: (a: DuplicateItem, b: DuplicateItem) => a.sizeLong - b.sizeLong
           },
-          { title: 'Res', dataIndex: 'frameSize', key: 'res', width: 100 },
-          { title: 'Sim', dataIndex: 'similarity', key: 'sim', width: 80, render: (v: number) => Math.round(v) + '%' },
+          { title: t('DuplicateList.Header.Resolution'), dataIndex: 'frameSize', key: 'res', width: 100 },
+          { title: t('DuplicateList.Header.Similarity'), dataIndex: 'similarity', key: 'sim', width: 80, render: (v: number) => Math.round(v) + '%' },
           {
             title: 'Action',
             key: 'action',
@@ -95,7 +97,7 @@ const Results: React.FC = () => {
   };
 
   return (
-    <Card title="Scan Results" bordered={false} extra={<Button onClick={refresh}>Refresh</Button>}>
+    <Card title="Results" variant="borderless" extra={<Button onClick={refresh}>Refresh</Button>}>
       {(!data || data.length === 0) ? (
         <Empty description="No duplicates found yet" />
       ) : (
