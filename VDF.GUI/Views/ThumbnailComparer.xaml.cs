@@ -53,9 +53,9 @@ namespace VDF.GUI.Views {
 		}
 		void InitializeComponent() => AvaloniaXamlLoader.Load(this);
 
-		private void ThumbnailComparer_Loaded(object? sender, Avalonia.Interactivity.RoutedEventArgs e) {
+		private async void ThumbnailComparer_Loaded(object? sender, Avalonia.Interactivity.RoutedEventArgs e) {
 			if (DataContext is ThumbnailComparerVM vm) {
-				vm.LoadThumbnailsAsync();
+				await vm.LoadThumbnailsAsync();
 				var canvas = this.FindControl<Grid>("CompareCanvas");
 				if (canvas != null) {
 					var b = canvas.Bounds;
