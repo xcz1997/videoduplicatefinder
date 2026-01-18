@@ -199,6 +199,13 @@ namespace VDF.GUI.Data {
 			set => this.RaiseAndSetIfChanged(ref _CustomDatabaseFolder, value);
 		}
 
+		string _Language = "zh";
+		[JsonPropertyName("Language")]
+		public string Language {
+			get => _Language;
+			set => this.RaiseAndSetIfChanged(ref _Language, value);
+		}
+
 		public static void SaveSettings(string? path = null) {
 			path ??= FileUtils.SafePathCombine(CoreUtils.CurrentFolder, "Settings.json");
 			File.WriteAllText(path, JsonSerializer.Serialize(instance));

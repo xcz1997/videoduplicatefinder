@@ -37,7 +37,7 @@ namespace VDF.GUI.Views {
 		public readonly Core.FFTools.FFHardwareAccelerationMode InitialHwMode;
 		public MainWindow() {
 			//Settings must be load before XAML is parsed
-			SettingsFile.LoadSettings();
+			//SettingsFile.LoadSettings(); // Moved to App.xaml.cs
 
 			InitializeComponent();
 			Closing += MainWindow_Closing;

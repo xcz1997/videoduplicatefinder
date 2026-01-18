@@ -161,6 +161,18 @@ namespace VDF.GUI.ViewModels {
 				Logger.Instance.Info(e.Message);
 			}
 		});
+		public IEnumerable<string> AvailableLanguages => new[] { "en", "zh" };
+		public string SelectedLanguage {
+			get => SettingsFile.Instance.Language;
+			set {
+				if (SettingsFile.Instance.Language != value) {
+					SettingsFile.Instance.Language = value;
+					App.Lang.CurrentLanguage = value;
+					this.RaisePropertyChanged();
+				}
+			}
+		}
+
 		public ReactiveCommand<Unit, Unit> SaveSettingsCommand => ReactiveCommand.CreateFromTask(async () => {
 			try {
 				SettingsFile.SaveSettings();
