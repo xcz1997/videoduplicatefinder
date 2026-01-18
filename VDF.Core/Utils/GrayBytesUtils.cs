@@ -115,8 +115,8 @@ namespace VDF.Core.Utils {
 			long diff = 0;
 			if (Avx2.IsSupported) {
 				Vector256<ushort> vec = Vector256<ushort>.Zero;
-				Span<Vector256<byte>> vImg1 = MemoryMarshal.Cast<byte, Vector256<byte>>(img1);
-				Span<Vector256<byte>> vImg2 = MemoryMarshal.Cast<byte, Vector256<byte>>(img2);
+				ReadOnlySpan<Vector256<byte>> vImg1 = MemoryMarshal.Cast<byte, Vector256<byte>>(img1);
+				ReadOnlySpan<Vector256<byte>> vImg2 = MemoryMarshal.Cast<byte, Vector256<byte>>(img2);
 
 				for (int i = 0; i < vImg1.Length; i++)
 					vec = Avx2.Add(vec, Avx2.SumAbsoluteDifferences(vImg2[i], vImg1[i]));
@@ -126,8 +126,8 @@ namespace VDF.Core.Utils {
 			}
 			else if (Sse2.IsSupported) {
 				Vector128<ushort> vec = Vector128<ushort>.Zero;
-				Span<Vector128<byte>> vImg1 = MemoryMarshal.Cast<byte, Vector128<byte>>(img1);
-				Span<Vector128<byte>> vImg2 = MemoryMarshal.Cast<byte, Vector128<byte>>(img2);
+				ReadOnlySpan<Vector128<byte>> vImg1 = MemoryMarshal.Cast<byte, Vector128<byte>>(img1);
+				ReadOnlySpan<Vector128<byte>> vImg2 = MemoryMarshal.Cast<byte, Vector128<byte>>(img2);
 
 				for (int i = 0; i < vImg1.Length; i++)
 					vec = Sse2.Add(vec, Sse2.SumAbsoluteDifferences(vImg2[i], vImg1[i]));
@@ -217,18 +217,18 @@ namespace VDF.Core.Utils {
 			byte[] flip_img;
 			if (Avx2.IsSupported) {
 				flip_img = new byte[img.Length];
-				Span<Vector256<byte>> vImg = MemoryMarshal.Cast<byte, Vector256<byte>>(img);
-				Span<Vector256<byte>> vImg_flipped = MemoryMarshal.Cast<byte, Vector256<byte>>(flip_img);
-				Span<Vector256<byte>> vFlipp_shuf = MemoryMarshal.Cast<byte, Vector256<byte>>(flipp_shuf256);
+				ReadOnlySpan<Vector256<byte>> vImg = MemoryMarshal.Cast<byte, Vector256<byte>>(img);
+				Span<Vector256<byte>> vImg_flipped = MemoryMarshal.Cast<byte, Vector256<byte>>(flip_img.AsSpan());
+				ReadOnlySpan<Vector256<byte>> vFlipp_shuf = MemoryMarshal.Cast<byte, Vector256<byte>>(flipp_shuf256);
 
 				for (int i = 0; i < vImg.Length; i++)
 					vImg_flipped[i] = Avx2.Shuffle(vImg[i], vFlipp_shuf[0]);
 			}
 			else if (Sse3.IsSupported) {
 				flip_img = new byte[img.Length];
-				Span<Vector128<byte>> vImg = MemoryMarshal.Cast<byte, Vector128<byte>>(img);
-				Span<Vector128<byte>> vImg_flipped = MemoryMarshal.Cast<byte, Vector128<byte>>(flip_img);
-				Span<Vector128<byte>> vFlipp_shuf = MemoryMarshal.Cast<byte, Vector128<byte>>(flipp_shuf256);
+				ReadOnlySpan<Vector128<byte>> vImg = MemoryMarshal.Cast<byte, Vector128<byte>>(img);
+				Span<Vector128<byte>> vImg_flipped = MemoryMarshal.Cast<byte, Vector128<byte>>(flip_img.AsSpan());
+				ReadOnlySpan<Vector128<byte>> vFlipp_shuf = MemoryMarshal.Cast<byte, Vector128<byte>>(flipp_shuf256);
 
 				for (int i = 0; i < vImg.Length; i++)
 					vImg_flipped[i] = Ssse3.Shuffle(vImg[i], vFlipp_shuf[0]);
