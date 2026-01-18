@@ -159,8 +159,9 @@ namespace VDF.GUI.Views {
 		}
 
 		void Thumbnails_ValueChanged(object? sender, NumericUpDownValueChangedEventArgs e) {
-			if (ApplicationHelpers.MainWindow != null && ApplicationHelpers.MainWindowDataContext != null)
-				ApplicationHelpers.MainWindowDataContext.Thumbnails_ValueChanged(sender, e);
+			var mw = ApplicationHelpers.MainWindow;
+			if (mw?.DataContext is MainWindowVM vm)
+				vm.Thumbnails_ValueChanged(sender, e);
 		}
 
 		void MainWindow_Startup(object? sender, ControlledApplicationLifetimeStartupEventArgs e) => ApplicationHelpers.MainWindowDataContext.LoadDatabase();
