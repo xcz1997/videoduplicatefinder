@@ -6,10 +6,54 @@
     xmlns:local="clr-namespace:VDF.GUI"
     RequestedThemeVariant="Dark">
 
+    <Application.Resources>
+        <!-- VSCode Dark Theme System Colors -->
+        <Color x:Key="SystemAccentColor">#007ACC</Color>
+        <Color x:Key="SystemAccentColorDark1">#0066AA</Color>
+        <Color x:Key="SystemAccentColorDark2">#005599</Color>
+        <Color x:Key="SystemAccentColorDark3">#004488</Color>
+        <Color x:Key="SystemAccentColorLight1">#1188DD</Color>
+        <Color x:Key="SystemAccentColorLight2">#3399EE</Color>
+        <Color x:Key="SystemAccentColorLight3">#55AAFF</Color>
+    </Application.Resources>
+
     <Application.Styles>
-        <FluentTheme />
+        <FluentTheme>
+            <FluentTheme.Palettes>
+                <!-- VSCode Dark Theme Palette -->
+                <ColorPaletteResources x:Key="Dark"
+                    Accent="#007ACC"
+                    AltHigh="#1E1E1E"
+                    AltLow="#1E1E1E"
+                    AltMedium="#1E1E1E"
+                    AltMediumHigh="#1E1E1E"
+                    AltMediumLow="#1E1E1E"
+                    BaseHigh="#CCCCCC"
+                    BaseLow="#3C3C3C"
+                    BaseMedium="#858585"
+                    BaseMediumHigh="#AAAAAA"
+                    BaseMediumLow="#666666"
+                    ChromeAltLow="#CCCCCC"
+                    ChromeBlackHigh="#000000"
+                    ChromeBlackLow="#CCCCCC"
+                    ChromeBlackMedium="#1E1E1E"
+                    ChromeBlackMediumLow="#1E1E1E"
+                    ChromeDisabledHigh="#3C3C3C"
+                    ChromeDisabledLow="#858585"
+                    ChromeGray="#858585"
+                    ChromeHigh="#858585"
+                    ChromeLow="#252526"
+                    ChromeMedium="#2D2D2D"
+                    ChromeMediumLow="#333333"
+                    ChromeWhite="#FFFFFF"
+                    ListLow="#252526"
+                    ListMedium="#2D2D2D"
+                    RegionColor="#1E1E1E" />
+            </FluentTheme.Palettes>
+        </FluentTheme>
         <StyleInclude Source="avares://Avalonia.Controls.TreeDataGrid/Themes/Fluent.axaml" />
         <actipro:ModernTheme />
         <actipro:ModernTheme Includes="NativeDataGrid" />
+        <StyleInclude Source="avares://VDF.GUI/Styles/Styles.xaml" />
     </Application.Styles>
 </Application>

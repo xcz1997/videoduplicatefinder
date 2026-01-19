@@ -1,21 +1,671 @@
 <Styles xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
-    <Design.PreviewWith>
-        <Border Padding="20">
-            <StackPanel Spacing="5">
-                <TextBlock FontFamily="{StaticResource CodeFontFamily}" Text="Code Font Family" />
-            </StackPanel>
-        </Border>
-    </Design.PreviewWith>
+
+    <!-- VSCode-Inspired Design System -->
     <Styles.Resources>
-        <Thickness x:Key="PageMargin">40 0 40 0</Thickness>
+        <!-- VSCode Dark Theme Colors -->
+        <Color x:Key="VsBackground">#1E1E1E</Color>
+        <Color x:Key="VsSidebarBg">#252526</Color>
+        <Color x:Key="VsActivityBarBg">#333333</Color>
+        <Color x:Key="VsEditorBg">#1E1E1E</Color>
+        <Color x:Key="VsStatusBarBg">#007ACC</Color>
+        <Color x:Key="VsTitleBarBg">#3C3C3C</Color>
+        <Color x:Key="VsListHoverBg">#2A2D2E</Color>
+        <Color x:Key="VsListActiveBg">#094771</Color>
+        <Color x:Key="VsInputBg">#3C3C3C</Color>
+        <Color x:Key="VsInputBorder">#3C3C3C</Color>
+        <Color x:Key="VsInputFocusBorder">#007ACC</Color>
+        <Color x:Key="VsBorder">#3C3C3C</Color>
+        <Color x:Key="VsDivider">#2D2D2D</Color>
+
+        <!-- Text Colors -->
+        <Color x:Key="VsForeground">#CCCCCC</Color>
+        <Color x:Key="VsForegroundDim">#858585</Color>
+        <Color x:Key="VsForegroundActive">#FFFFFF</Color>
+        <Color x:Key="VsAccent">#007ACC</Color>
+        <Color x:Key="VsAccentLight">#1177BB</Color>
+        <Color x:Key="VsSuccess">#4EC9B0</Color>
+        <Color x:Key="VsWarning">#CCA700</Color>
+        <Color x:Key="VsError">#F14C4C</Color>
+        <Color x:Key="VsInfo">#3794FF</Color>
+
+        <!-- Brushes -->
+        <SolidColorBrush x:Key="VsBackgroundBrush" Color="{StaticResource VsBackground}" />
+        <SolidColorBrush x:Key="VsSidebarBgBrush" Color="{StaticResource VsSidebarBg}" />
+        <SolidColorBrush x:Key="VsActivityBarBgBrush" Color="{StaticResource VsActivityBarBg}" />
+        <SolidColorBrush x:Key="VsEditorBgBrush" Color="{StaticResource VsEditorBg}" />
+        <SolidColorBrush x:Key="VsStatusBarBgBrush" Color="{StaticResource VsStatusBarBg}" />
+        <SolidColorBrush x:Key="VsTitleBarBgBrush" Color="{StaticResource VsTitleBarBg}" />
+        <SolidColorBrush x:Key="VsListHoverBgBrush" Color="{StaticResource VsListHoverBg}" />
+        <SolidColorBrush x:Key="VsListActiveBgBrush" Color="{StaticResource VsListActiveBg}" />
+        <SolidColorBrush x:Key="VsInputBgBrush" Color="{StaticResource VsInputBg}" />
+        <SolidColorBrush x:Key="VsBorderBrush" Color="{StaticResource VsBorder}" />
+        <SolidColorBrush x:Key="VsDividerBrush" Color="{StaticResource VsDivider}" />
+        <SolidColorBrush x:Key="VsForegroundBrush" Color="{StaticResource VsForeground}" />
+        <SolidColorBrush x:Key="VsForegroundDimBrush" Color="{StaticResource VsForegroundDim}" />
+        <SolidColorBrush x:Key="VsForegroundActiveBrush" Color="{StaticResource VsForegroundActive}" />
+        <SolidColorBrush x:Key="VsAccentBrush" Color="{StaticResource VsAccent}" />
+        <SolidColorBrush x:Key="VsSuccessBrush" Color="{StaticResource VsSuccess}" />
+        <SolidColorBrush x:Key="VsWarningBrush" Color="{StaticResource VsWarning}" />
+        <SolidColorBrush x:Key="VsErrorBrush" Color="{StaticResource VsError}" />
+        <SolidColorBrush x:Key="VsInfoBrush" Color="{StaticResource VsInfo}" />
+
+        <!-- Fonts -->
         <FontFamily x:Key="CodeFontFamily">avares://VDF.GUI/Assets/Fonts#Source Code Pro</FontFamily>
+        <x:Double x:Key="VsFontSize">13</x:Double>
+        <x:Double x:Key="VsFontSizeSmall">11</x:Double>
+        <x:Double x:Key="VsFontSizeLarge">14</x:Double>
+
+        <!-- Spacing -->
+        <Thickness x:Key="VsItemPadding">8 6</Thickness>
+        <Thickness x:Key="VsContainerPadding">12</Thickness>
+        <CornerRadius x:Key="VsCornerRadius">4</CornerRadius>
+        <CornerRadius x:Key="VsCornerRadiusSmall">2</CornerRadius>
     </Styles.Resources>
 
+    <!-- Window Maximized State -->
+    <Style Selector="Window[WindowState=Maximized]">
+        <Setter Property="Padding" Value="8" />
+    </Style>
+
+    <!-- Code TextBlock -->
     <Style Selector="TextBlock.code">
         <Setter Property="FontFamily" Value="{StaticResource CodeFontFamily}" />
     </Style>
-    
-    <Style Selector="Window[WindowState=Maximized]">
-        <Setter Property="Padding" Value="8" />
+
+    <!-- ==================== VSCode Activity Bar RadioButton ==================== -->
+    <Style Selector="RadioButton.vs-activity-radio">
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="BorderThickness" Value="0" />
+        <Setter Property="Width" Value="48" />
+        <Setter Property="Height" Value="48" />
+        <Setter Property="Padding" Value="12" />
+        <Setter Property="Cursor" Value="Hand" />
+        <Setter Property="HorizontalContentAlignment" Value="Center" />
+        <Setter Property="VerticalContentAlignment" Value="Center" />
+        <Setter Property="Template">
+            <ControlTemplate>
+                <Border x:Name="PART_Border"
+                        Background="{TemplateBinding Background}"
+                        BorderBrush="{TemplateBinding BorderBrush}"
+                        BorderThickness="{TemplateBinding BorderThickness}"
+                        Padding="{TemplateBinding Padding}">
+                    <ContentPresenter x:Name="PART_ContentPresenter"
+                                      Content="{TemplateBinding Content}"
+                                      HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                      VerticalAlignment="{TemplateBinding VerticalContentAlignment}" />
+                </Border>
+            </ControlTemplate>
+        </Setter>
+    </Style>
+    <Style Selector="RadioButton.vs-activity-radio:pointerover">
+        <Setter Property="Background" Value="#2A2D2E" />
+    </Style>
+    <Style Selector="RadioButton.vs-activity-radio:pointerover /template/ Border#PART_Border Path">
+        <Setter Property="Fill" Value="{StaticResource VsForegroundActiveBrush}" />
+    </Style>
+    <Style Selector="RadioButton.vs-activity-radio:checked">
+        <Setter Property="Background" Value="Transparent" />
+    </Style>
+    <Style Selector="RadioButton.vs-activity-radio:checked /template/ Border#PART_Border">
+        <Setter Property="BorderBrush" Value="{StaticResource VsAccentBrush}" />
+        <Setter Property="BorderThickness" Value="2 0 0 0" />
+    </Style>
+    <Style Selector="RadioButton.vs-activity-radio:checked Path">
+        <Setter Property="Fill" Value="{StaticResource VsForegroundActiveBrush}" />
+    </Style>
+
+    <!-- ==================== VSCode Activity Bar Button ==================== -->
+    <Style Selector="Button.vs-activity-btn">
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="BorderThickness" Value="0" />
+        <Setter Property="Width" Value="48" />
+        <Setter Property="Height" Value="48" />
+        <Setter Property="Padding" Value="12" />
+        <Setter Property="Cursor" Value="Hand" />
+        <Setter Property="Foreground" Value="{StaticResource VsForegroundDimBrush}" />
+        <Setter Property="CornerRadius" Value="0" />
+    </Style>
+    <Style Selector="Button.vs-activity-btn:pointerover">
+        <Setter Property="Foreground" Value="{StaticResource VsForegroundActiveBrush}" />
+    </Style>
+    <Style Selector="Button.vs-activity-btn:pressed">
+        <Setter Property="Foreground" Value="{StaticResource VsForegroundActiveBrush}" />
+    </Style>
+    <Style Selector="Button.vs-activity-btn.active">
+        <Setter Property="Foreground" Value="{StaticResource VsForegroundActiveBrush}" />
+        <Setter Property="BorderBrush" Value="{StaticResource VsAccentBrush}" />
+        <Setter Property="BorderThickness" Value="2 0 0 0" />
+    </Style>
+
+    <!-- ==================== VSCode Icon Button ==================== -->
+    <Style Selector="Button.vs-icon-btn">
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="BorderThickness" Value="0" />
+        <Setter Property="Padding" Value="4" />
+        <Setter Property="Cursor" Value="Hand" />
+        <Setter Property="Foreground" Value="{StaticResource VsForegroundBrush}" />
+        <Setter Property="CornerRadius" Value="{StaticResource VsCornerRadiusSmall}" />
+        <Setter Property="Opacity" Value="0.7" />
+    </Style>
+    <Style Selector="Button.vs-icon-btn:pointerover">
+        <Setter Property="Background" Value="{StaticResource VsListHoverBgBrush}" />
+        <Setter Property="Opacity" Value="1" />
+    </Style>
+    <Style Selector="Button.vs-icon-btn:pressed">
+        <Setter Property="Background" Value="{StaticResource VsListActiveBgBrush}" />
+        <Setter Property="Opacity" Value="1" />
+    </Style>
+
+    <!-- ==================== VSCode Primary Button ==================== -->
+    <Style Selector="Button.vs-primary">
+        <Setter Property="Background" Value="{StaticResource VsAccentBrush}" />
+        <Setter Property="Foreground" Value="#FFFFFF" />
+        <Setter Property="BorderThickness" Value="0" />
+        <Setter Property="Padding" Value="16 8" />
+        <Setter Property="FontSize" Value="{StaticResource VsFontSize}" />
+        <Setter Property="FontWeight" Value="Normal" />
+        <Setter Property="CornerRadius" Value="{StaticResource VsCornerRadiusSmall}" />
+        <Setter Property="Cursor" Value="Hand" />
+        <Setter Property="MinHeight" Value="28" />
+    </Style>
+    <Style Selector="Button.vs-primary:pointerover">
+        <Setter Property="Background" Value="{StaticResource VsAccentLight}" />
+    </Style>
+    <Style Selector="Button.vs-primary:pressed">
+        <Setter Property="Background" Value="#005A9E" />
+    </Style>
+    <Style Selector="Button.vs-primary:disabled">
+        <Setter Property="Opacity" Value="0.5" />
+    </Style>
+
+    <!-- ==================== VSCode Secondary Button ==================== -->
+    <Style Selector="Button.vs-secondary">
+        <Setter Property="Background" Value="{StaticResource VsInputBgBrush}" />
+        <Setter Property="Foreground" Value="{StaticResource VsForegroundBrush}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="BorderBrush" Value="{StaticResource VsBorderBrush}" />
+        <Setter Property="Padding" Value="16 8" />
+        <Setter Property="FontSize" Value="{StaticResource VsFontSize}" />
+        <Setter Property="CornerRadius" Value="{StaticResource VsCornerRadiusSmall}" />
+        <Setter Property="Cursor" Value="Hand" />
+        <Setter Property="MinHeight" Value="28" />
+    </Style>
+    <Style Selector="Button.vs-secondary:pointerover">
+        <Setter Property="Background" Value="{StaticResource VsListHoverBgBrush}" />
+    </Style>
+    <Style Selector="Button.vs-secondary:pressed">
+        <Setter Property="Background" Value="{StaticResource VsListActiveBgBrush}" />
+    </Style>
+
+    <!-- ==================== VSCode Danger Button ==================== -->
+    <Style Selector="Button.vs-danger">
+        <Setter Property="Background" Value="{StaticResource VsErrorBrush}" />
+        <Setter Property="Foreground" Value="#FFFFFF" />
+        <Setter Property="BorderThickness" Value="0" />
+        <Setter Property="Padding" Value="16 8" />
+        <Setter Property="FontSize" Value="{StaticResource VsFontSize}" />
+        <Setter Property="CornerRadius" Value="{StaticResource VsCornerRadiusSmall}" />
+        <Setter Property="Cursor" Value="Hand" />
+        <Setter Property="MinHeight" Value="28" />
+    </Style>
+    <Style Selector="Button.vs-danger:pointerover">
+        <Setter Property="Background" Value="#D32F2F" />
+    </Style>
+
+    <!-- ==================== VSCode Success Button ==================== -->
+    <Style Selector="Button.vs-success">
+        <Setter Property="Background" Value="#388A34" />
+        <Setter Property="Foreground" Value="#FFFFFF" />
+        <Setter Property="BorderThickness" Value="0" />
+        <Setter Property="Padding" Value="16 8" />
+        <Setter Property="FontSize" Value="{StaticResource VsFontSize}" />
+        <Setter Property="CornerRadius" Value="{StaticResource VsCornerRadiusSmall}" />
+        <Setter Property="Cursor" Value="Hand" />
+        <Setter Property="MinHeight" Value="28" />
+    </Style>
+    <Style Selector="Button.vs-success:pointerover">
+        <Setter Property="Background" Value="#4CAF50" />
+    </Style>
+
+    <!-- ==================== VSCode TextBox ==================== -->
+    <Style Selector="TextBox.vs-input">
+        <Setter Property="Background" Value="{StaticResource VsInputBgBrush}" />
+        <Setter Property="Foreground" Value="{StaticResource VsForegroundBrush}" />
+        <Setter Property="BorderBrush" Value="{StaticResource VsBorderBrush}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="Padding" Value="8 6" />
+        <Setter Property="FontSize" Value="{StaticResource VsFontSize}" />
+        <Setter Property="CornerRadius" Value="{StaticResource VsCornerRadiusSmall}" />
+        <Setter Property="MinHeight" Value="28" />
+    </Style>
+    <Style Selector="TextBox.vs-input:focus">
+        <Setter Property="BorderBrush" Value="{StaticResource VsAccentBrush}" />
+    </Style>
+    <Style Selector="TextBox.vs-input:pointerover">
+        <Setter Property="BorderBrush" Value="#4C4C4C" />
+    </Style>
+
+    <!-- ==================== VSCode ComboBox ==================== -->
+    <Style Selector="ComboBox.vs-select">
+        <Setter Property="Background" Value="{StaticResource VsInputBgBrush}" />
+        <Setter Property="Foreground" Value="{StaticResource VsForegroundBrush}" />
+        <Setter Property="BorderBrush" Value="{StaticResource VsBorderBrush}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="Padding" Value="8 6" />
+        <Setter Property="FontSize" Value="{StaticResource VsFontSize}" />
+        <Setter Property="CornerRadius" Value="{StaticResource VsCornerRadiusSmall}" />
+        <Setter Property="MinHeight" Value="28" />
+    </Style>
+
+    <!-- ==================== VSCode CheckBox ==================== -->
+    <Style Selector="CheckBox.vs-checkbox">
+        <Setter Property="Foreground" Value="{StaticResource VsForegroundBrush}" />
+        <Setter Property="FontSize" Value="{StaticResource VsFontSize}" />
+        <Setter Property="Padding" Value="8 4" />
+        <Setter Property="Cursor" Value="Hand" />
+    </Style>
+
+    <!-- ==================== VSCode Section Header ==================== -->
+    <Style Selector="TextBlock.vs-section-header">
+        <Setter Property="FontSize" Value="11" />
+        <Setter Property="FontWeight" Value="SemiBold" />
+        <Setter Property="Foreground" Value="{StaticResource VsForegroundBrush}" />
+        <Setter Property="Padding" Value="12 8" />
+    </Style>
+
+    <!-- ==================== VSCode Label ==================== -->
+    <Style Selector="TextBlock.vs-label">
+        <Setter Property="FontSize" Value="{StaticResource VsFontSize}" />
+        <Setter Property="Foreground" Value="{StaticResource VsForegroundBrush}" />
+        <Setter Property="Margin" Value="0 0 0 4" />
+    </Style>
+
+    <Style Selector="TextBlock.vs-label-dim">
+        <Setter Property="FontSize" Value="{StaticResource VsFontSizeSmall}" />
+        <Setter Property="Foreground" Value="{StaticResource VsForegroundDimBrush}" />
+    </Style>
+
+    <!-- ==================== VSCode Card/Panel ==================== -->
+    <Style Selector="Border.vs-card">
+        <Setter Property="Background" Value="{StaticResource VsSidebarBgBrush}" />
+        <Setter Property="BorderBrush" Value="{StaticResource VsBorderBrush}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="CornerRadius" Value="{StaticResource VsCornerRadius}" />
+        <Setter Property="Padding" Value="12" />
+    </Style>
+
+    <!-- ==================== VSCode List Item ==================== -->
+    <Style Selector="Border.vs-list-item">
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="Padding" Value="8 6" />
+        <Setter Property="Cursor" Value="Hand" />
+    </Style>
+    <Style Selector="Border.vs-list-item:pointerover">
+        <Setter Property="Background" Value="{StaticResource VsListHoverBgBrush}" />
+    </Style>
+
+    <!-- ==================== VSCode Divider ==================== -->
+    <Style Selector="Separator.vs-divider">
+        <Setter Property="Background" Value="{StaticResource VsDividerBrush}" />
+        <Setter Property="Height" Value="1" />
+        <Setter Property="Margin" Value="0 8" />
+    </Style>
+
+    <!-- ==================== VSCode Settings Row ==================== -->
+    <Style Selector="Border.vs-setting-row">
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="Padding" Value="16 12" />
+        <Setter Property="BorderBrush" Value="{StaticResource VsDividerBrush}" />
+        <Setter Property="BorderThickness" Value="0 0 0 1" />
+    </Style>
+    <Style Selector="Border.vs-setting-row:pointerover">
+        <Setter Property="Background" Value="#2A2D2E" />
+    </Style>
+
+    <!-- ==================== VSCode Badge ==================== -->
+    <Style Selector="Border.vs-badge">
+        <Setter Property="Background" Value="{StaticResource VsAccentBrush}" />
+        <Setter Property="CornerRadius" Value="10" />
+        <Setter Property="Padding" Value="6 2" />
+        <Setter Property="MinWidth" Value="18" />
+        <Setter Property="MinHeight" Value="18" />
+    </Style>
+    <Style Selector="Border.vs-badge TextBlock">
+        <Setter Property="Foreground" Value="#FFFFFF" />
+        <Setter Property="FontSize" Value="11" />
+        <Setter Property="HorizontalAlignment" Value="Center" />
+    </Style>
+
+    <!-- ==================== VSCode Progress Bar ==================== -->
+    <Style Selector="ProgressBar.vs-progress">
+        <Setter Property="Height" Value="4" />
+        <Setter Property="Background" Value="{StaticResource VsInputBgBrush}" />
+        <Setter Property="Foreground" Value="{StaticResource VsAccentBrush}" />
+        <Setter Property="CornerRadius" Value="2" />
+    </Style>
+
+    <!-- ==================== VSCode Status Bar Item ==================== -->
+    <Style Selector="Border.vs-status-item">
+        <Setter Property="Padding" Value="8 0" />
+        <Setter Property="Cursor" Value="Hand" />
+    </Style>
+    <Style Selector="Border.vs-status-item:pointerover">
+        <Setter Property="Background" Value="#FFFFFF20" />
+    </Style>
+    <Style Selector="Border.vs-status-item TextBlock">
+        <Setter Property="FontSize" Value="12" />
+        <Setter Property="Foreground" Value="#FFFFFF" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+
+    <!-- ==================== VSCode Tab ==================== -->
+    <Style Selector="TabItem.vs-tab">
+        <Setter Property="FontSize" Value="{StaticResource VsFontSize}" />
+        <Setter Property="Foreground" Value="{StaticResource VsForegroundDimBrush}" />
+        <Setter Property="Padding" Value="12 8" />
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="BorderThickness" Value="0 0 0 2" />
+        <Setter Property="BorderBrush" Value="Transparent" />
+    </Style>
+    <Style Selector="TabItem.vs-tab:pointerover">
+        <Setter Property="Foreground" Value="{StaticResource VsForegroundBrush}" />
+    </Style>
+    <Style Selector="TabItem.vs-tab:selected">
+        <Setter Property="Foreground" Value="{StaticResource VsForegroundActiveBrush}" />
+        <Setter Property="BorderBrush" Value="{StaticResource VsAccentBrush}" />
+    </Style>
+
+    <!-- ==================== VSCode Toolbar ==================== -->
+    <Style Selector="Border.vs-toolbar">
+        <Setter Property="Background" Value="{StaticResource VsSidebarBgBrush}" />
+        <Setter Property="Padding" Value="4" />
+        <Setter Property="BorderBrush" Value="{StaticResource VsDividerBrush}" />
+        <Setter Property="BorderThickness" Value="0 0 0 1" />
+    </Style>
+
+    <!-- ==================== VSCode Toolbar Button ==================== -->
+    <Style Selector="Button.vs-toolbar-btn">
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="BorderThickness" Value="0" />
+        <Setter Property="Padding" Value="8 6" />
+        <Setter Property="Margin" Value="2 0" />
+        <Setter Property="Cursor" Value="Hand" />
+        <Setter Property="Foreground" Value="{StaticResource VsForegroundBrush}" />
+        <Setter Property="CornerRadius" Value="{StaticResource VsCornerRadiusSmall}" />
+        <Setter Property="FontSize" Value="{StaticResource VsFontSize}" />
+    </Style>
+    <Style Selector="Button.vs-toolbar-btn:pointerover">
+        <Setter Property="Background" Value="{StaticResource VsListHoverBgBrush}" />
+    </Style>
+    <Style Selector="Button.vs-toolbar-btn:pressed">
+        <Setter Property="Background" Value="{StaticResource VsListActiveBgBrush}" />
+    </Style>
+    <Style Selector="Button.vs-toolbar-btn:disabled">
+        <Setter Property="Opacity" Value="0.4" />
+    </Style>
+
+    <!-- ==================== VSCode MenuItem ==================== -->
+    <Style Selector="MenuItem.vs-menu-item">
+        <Setter Property="Foreground" Value="{StaticResource VsForegroundBrush}" />
+        <Setter Property="FontSize" Value="{StaticResource VsFontSize}" />
+        <Setter Property="Padding" Value="8 6" />
+    </Style>
+
+    <!-- ==================== VSCode NumericUpDown ==================== -->
+    <Style Selector="NumericUpDown.vs-numeric">
+        <Setter Property="Background" Value="{StaticResource VsInputBgBrush}" />
+        <Setter Property="Foreground" Value="{StaticResource VsForegroundBrush}" />
+        <Setter Property="BorderBrush" Value="{StaticResource VsBorderBrush}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="FontSize" Value="{StaticResource VsFontSize}" />
+        <Setter Property="MinHeight" Value="28" />
+    </Style>
+
+    <!-- ==================== VSCode ListBox ==================== -->
+    <Style Selector="ListBox.vs-listbox">
+        <Setter Property="Background" Value="{StaticResource VsInputBgBrush}" />
+        <Setter Property="BorderBrush" Value="{StaticResource VsBorderBrush}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="CornerRadius" Value="{StaticResource VsCornerRadiusSmall}" />
+        <Setter Property="Padding" Value="0" />
+    </Style>
+    <Style Selector="ListBox.vs-listbox ListBoxItem">
+        <Setter Property="Padding" Value="8 6" />
+        <Setter Property="Foreground" Value="{StaticResource VsForegroundBrush}" />
+        <Setter Property="FontSize" Value="{StaticResource VsFontSize}" />
+    </Style>
+    <Style Selector="ListBox.vs-listbox ListBoxItem:pointerover">
+        <Setter Property="Background" Value="{StaticResource VsListHoverBgBrush}" />
+    </Style>
+    <Style Selector="ListBox.vs-listbox ListBoxItem:selected">
+        <Setter Property="Background" Value="{StaticResource VsListActiveBgBrush}" />
+    </Style>
+
+    <!-- ==================== VSCode Scrollbar ==================== -->
+    <Style Selector="ScrollViewer">
+        <Setter Property="HorizontalScrollBarVisibility" Value="Auto" />
+        <Setter Property="VerticalScrollBarVisibility" Value="Auto" />
+    </Style>
+
+    <!-- ==================== VSCode Tooltip ==================== -->
+    <Style Selector="ToolTip">
+        <Setter Property="Background" Value="#2D2D30" />
+        <Setter Property="Foreground" Value="{StaticResource VsForegroundBrush}" />
+        <Setter Property="BorderBrush" Value="#454545" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="Padding" Value="8 4" />
+        <Setter Property="FontSize" Value="{StaticResource VsFontSize}" />
+    </Style>
+
+    <!-- ==================== VSCode DataGrid ==================== -->
+    <Style Selector="DataGridRow">
+        <Setter Property="Background" Value="Transparent" />
+    </Style>
+    <Style Selector="DataGridRow:pointerover">
+        <Setter Property="Background" Value="{StaticResource VsListHoverBgBrush}" />
+    </Style>
+    <Style Selector="DataGridRow:selected">
+        <Setter Property="Background" Value="{StaticResource VsListActiveBgBrush}" />
+    </Style>
+
+    <!-- ==================== VSCode Empty State ==================== -->
+    <Style Selector="Border.vs-empty-state">
+        <Setter Property="Padding" Value="32" />
+    </Style>
+    <Style Selector="Border.vs-empty-state TextBlock">
+        <Setter Property="Foreground" Value="{StaticResource VsForegroundDimBrush}" />
+        <Setter Property="HorizontalAlignment" Value="Center" />
+        <Setter Property="TextAlignment" Value="Center" />
+    </Style>
+
+    <!-- ==================== Notification/Alert Styles ==================== -->
+    <Style Selector="Border.vs-alert-info">
+        <Setter Property="Background" Value="#063B49" />
+        <Setter Property="BorderBrush" Value="{StaticResource VsInfoBrush}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="CornerRadius" Value="{StaticResource VsCornerRadius}" />
+        <Setter Property="Padding" Value="12" />
+    </Style>
+
+    <Style Selector="Border.vs-alert-warning">
+        <Setter Property="Background" Value="#4D3800" />
+        <Setter Property="BorderBrush" Value="{StaticResource VsWarningBrush}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="CornerRadius" Value="{StaticResource VsCornerRadius}" />
+        <Setter Property="Padding" Value="12" />
+    </Style>
+
+    <Style Selector="Border.vs-alert-error">
+        <Setter Property="Background" Value="#4B1818" />
+        <Setter Property="BorderBrush" Value="{StaticResource VsErrorBrush}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="CornerRadius" Value="{StaticResource VsCornerRadius}" />
+        <Setter Property="Padding" Value="12" />
+    </Style>
+
+    <Style Selector="Border.vs-alert-success">
+        <Setter Property="Background" Value="#1E3A1E" />
+        <Setter Property="BorderBrush" Value="{StaticResource VsSuccessBrush}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="CornerRadius" Value="{StaticResource VsCornerRadius}" />
+        <Setter Property="Padding" Value="12" />
+    </Style>
+
+    <!-- ==================== Global Default Styles ==================== -->
+    <!-- These apply VSCode styling to ALL controls automatically -->
+
+    <!-- Global CheckBox Style -->
+    <Style Selector="CheckBox">
+        <Setter Property="Foreground" Value="{StaticResource VsForegroundBrush}" />
+        <Setter Property="FontSize" Value="{StaticResource VsFontSize}" />
+        <Setter Property="Padding" Value="8 4" />
+        <Setter Property="Cursor" Value="Hand" />
+    </Style>
+
+    <!-- Global TextBox Style -->
+    <Style Selector="TextBox">
+        <Setter Property="Background" Value="{StaticResource VsInputBgBrush}" />
+        <Setter Property="Foreground" Value="{StaticResource VsForegroundBrush}" />
+        <Setter Property="BorderBrush" Value="{StaticResource VsBorderBrush}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="Padding" Value="8 6" />
+        <Setter Property="FontSize" Value="{StaticResource VsFontSize}" />
+        <Setter Property="CornerRadius" Value="{StaticResource VsCornerRadiusSmall}" />
+        <Setter Property="MinHeight" Value="28" />
+    </Style>
+    <Style Selector="TextBox:focus">
+        <Setter Property="BorderBrush" Value="{StaticResource VsAccentBrush}" />
+    </Style>
+    <Style Selector="TextBox:pointerover">
+        <Setter Property="BorderBrush" Value="#4C4C4C" />
+    </Style>
+
+    <!-- Global ComboBox Style -->
+    <Style Selector="ComboBox">
+        <Setter Property="Background" Value="{StaticResource VsInputBgBrush}" />
+        <Setter Property="Foreground" Value="{StaticResource VsForegroundBrush}" />
+        <Setter Property="BorderBrush" Value="{StaticResource VsBorderBrush}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="Padding" Value="8 6" />
+        <Setter Property="FontSize" Value="{StaticResource VsFontSize}" />
+        <Setter Property="CornerRadius" Value="{StaticResource VsCornerRadiusSmall}" />
+        <Setter Property="MinHeight" Value="28" />
+    </Style>
+
+    <!-- Global NumericUpDown Style -->
+    <Style Selector="NumericUpDown">
+        <Setter Property="Background" Value="{StaticResource VsInputBgBrush}" />
+        <Setter Property="Foreground" Value="{StaticResource VsForegroundBrush}" />
+        <Setter Property="BorderBrush" Value="{StaticResource VsBorderBrush}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="FontSize" Value="{StaticResource VsFontSize}" />
+        <Setter Property="MinHeight" Value="28" />
+    </Style>
+
+    <!-- Global ListBox Style -->
+    <Style Selector="ListBox">
+        <Setter Property="Background" Value="{StaticResource VsInputBgBrush}" />
+        <Setter Property="BorderBrush" Value="{StaticResource VsBorderBrush}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="CornerRadius" Value="{StaticResource VsCornerRadiusSmall}" />
+        <Setter Property="Padding" Value="0" />
+    </Style>
+    <Style Selector="ListBox ListBoxItem">
+        <Setter Property="Padding" Value="8 6" />
+        <Setter Property="Foreground" Value="{StaticResource VsForegroundBrush}" />
+        <Setter Property="FontSize" Value="{StaticResource VsFontSize}" />
+    </Style>
+    <Style Selector="ListBox ListBoxItem:pointerover">
+        <Setter Property="Background" Value="{StaticResource VsListHoverBgBrush}" />
+    </Style>
+    <Style Selector="ListBox ListBoxItem:selected">
+        <Setter Property="Background" Value="{StaticResource VsListActiveBgBrush}" />
+    </Style>
+
+    <!-- Global TabItem Style -->
+    <Style Selector="TabItem">
+        <Setter Property="FontSize" Value="{StaticResource VsFontSize}" />
+        <Setter Property="Foreground" Value="{StaticResource VsForegroundDimBrush}" />
+        <Setter Property="Padding" Value="12 8" />
+        <Setter Property="Background" Value="Transparent" />
+    </Style>
+    <Style Selector="TabItem:pointerover">
+        <Setter Property="Foreground" Value="{StaticResource VsForegroundBrush}" />
+    </Style>
+    <Style Selector="TabItem:selected">
+        <Setter Property="Foreground" Value="{StaticResource VsForegroundActiveBrush}" />
+    </Style>
+
+    <!-- Global TabControl Style -->
+    <Style Selector="TabControl">
+        <Setter Property="Background" Value="Transparent" />
+    </Style>
+
+    <!-- Global Menu Style -->
+    <Style Selector="Menu">
+        <Setter Property="Background" Value="{StaticResource VsSidebarBgBrush}" />
+    </Style>
+
+    <!-- Global MenuItem Style -->
+    <Style Selector="MenuItem">
+        <Setter Property="Foreground" Value="{StaticResource VsForegroundBrush}" />
+        <Setter Property="FontSize" Value="{StaticResource VsFontSize}" />
+        <Setter Property="Padding" Value="8 6" />
+    </Style>
+    <Style Selector="MenuItem:pointerover /template/ Border#PART_LayoutRoot">
+        <Setter Property="Background" Value="{StaticResource VsListHoverBgBrush}" />
+    </Style>
+
+    <!-- Global Button Style (default secondary look) -->
+    <Style Selector="Button:not(.hyperlink)">
+        <Setter Property="Background" Value="{StaticResource VsInputBgBrush}" />
+        <Setter Property="Foreground" Value="{StaticResource VsForegroundBrush}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="BorderBrush" Value="{StaticResource VsBorderBrush}" />
+        <Setter Property="Padding" Value="12 6" />
+        <Setter Property="FontSize" Value="{StaticResource VsFontSize}" />
+        <Setter Property="CornerRadius" Value="{StaticResource VsCornerRadiusSmall}" />
+        <Setter Property="Cursor" Value="Hand" />
+        <Setter Property="MinHeight" Value="28" />
+    </Style>
+    <Style Selector="Button:not(.hyperlink):pointerover">
+        <Setter Property="Background" Value="{StaticResource VsListHoverBgBrush}" />
+    </Style>
+    <Style Selector="Button:not(.hyperlink):pressed">
+        <Setter Property="Background" Value="{StaticResource VsListActiveBgBrush}" />
+    </Style>
+
+    <!-- Global TextBlock Style -->
+    <Style Selector="TextBlock">
+        <Setter Property="Foreground" Value="{StaticResource VsForegroundBrush}" />
+    </Style>
+
+    <!-- Global Label Style -->
+    <Style Selector="Label">
+        <Setter Property="Foreground" Value="{StaticResource VsForegroundBrush}" />
+    </Style>
+
+    <!-- Global Separator Style -->
+    <Style Selector="Separator">
+        <Setter Property="Background" Value="{StaticResource VsDividerBrush}" />
+        <Setter Property="Height" Value="1" />
+        <Setter Property="Margin" Value="0 4" />
+    </Style>
+
+    <!-- Global ProgressBar Style -->
+    <Style Selector="ProgressBar">
+        <Setter Property="Background" Value="{StaticResource VsInputBgBrush}" />
+        <Setter Property="Foreground" Value="{StaticResource VsAccentBrush}" />
+    </Style>
+
+    <!-- Global Expander Style -->
+    <Style Selector="Expander">
+        <Setter Property="Foreground" Value="{StaticResource VsForegroundBrush}" />
+        <Setter Property="Background" Value="{StaticResource VsSidebarBgBrush}" />
+    </Style>
+
+    <!-- Global Grid Splitter Style -->
+    <Style Selector="GridSplitter">
+        <Setter Property="Background" Value="{StaticResource VsDividerBrush}" />
     </Style>
 </Styles>

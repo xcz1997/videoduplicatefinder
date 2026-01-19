@@ -1,31 +1,64 @@
 import React, { useState } from 'react';
-import { Form, InputNumber, Switch, Button, Card, message, Divider, Select, List, Typography, Space, Input, Row, Col, Tooltip } from 'antd';
-import { DeleteOutlined, PlusOutlined, QuestionCircleOutlined } from '@ant-design/icons';
+import { Form, InputNumber, Switch, Button, Card, message, Select, List, Typography, Space, Input, Row, Col, Tooltip } from 'antd';
+import {
+  DeleteOutlined,
+  PlusOutlined,
+  QuestionCircleOutlined,
+  FolderOutlined,
+  SettingOutlined,
+  ThunderboltOutlined,
+  ControlOutlined,
+  ExperimentOutlined,
+  ToolOutlined,
+  SaveOutlined
+} from '@ant-design/icons';
 import { useRequest } from 'ahooks';
 import { useTranslation } from 'react-i18next';
 import { settings } from '../api';
 import { FolderPicker } from '../components/FolderPicker';
 
 const { Option } = Select;
-const { Text } = Typography;
+const { Text, Title } = Typography;
 
 // Helper component for label with tooltip
 const LabelWithTooltip: React.FC<{ label: string; tooltip?: string }> = ({ label, tooltip }) => {
-  if (!tooltip) return <>{label}</>;
+  if (!tooltip) return <span className="label-text">{label}</span>;
   return (
-    <Space>
-      {label}
+    <Space size={6}>
+      <span className="label-text">{label}</span>
       <Tooltip title={tooltip}>
-        <QuestionCircleOutlined style={{ color: '#1890ff', cursor: 'help' }} />
+        <QuestionCircleOutlined style={{ color: '#6750A4', cursor: 'help', fontSize: 14 }} />
       </Tooltip>
     </Space>
   );
 };
 
+// Card Title with Icon
+const CardTitle: React.FC<{ icon: React.ReactNode; iconClass: string; title: string }> = ({ icon, iconClass, title }) => (
+  <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+    <div className={`card-icon ${iconClass}`}>{icon}</div>
+    <span>{title}</span>
+  </div>
+);
+
+// Switch Item Component
+const SwitchItem: React.FC<{
+  name: string;
+  label: string;
+  tooltip?: string;
+}> = ({ name, label, tooltip }) => (
+  <div className="switch-item">
+    <LabelWithTooltip label={label} tooltip={tooltip} />
+    <Form.Item name={name} valuePropName="checked" noStyle>
+      <Switch />
+    </Form.Item>
+  </div>
+);
+
 const Settings: React.FC = () => {
   const [form] = Form.useForm();
   const { t } = useTranslation();
-  
+
   // State for folder lists
   const [includes, setIncludes] = useState<string[]>([]);
   const [blacklists, setBlacklists] = useState<string[]>([]);
@@ -42,16 +75,16 @@ const Settings: React.FC = () => {
 
   const onFinish = async (values: any) => {
     try {
-      const toSave = { 
-          ...data, 
-          ...values,
-          Includes: includes,
-          Blacklists: blacklists
+      const toSave = {
+        ...data,
+        ...values,
+        Includes: includes,
+        Blacklists: blacklists
       };
       await settings.save(toSave);
-      message.success('Settings saved successfully');
+      message.success(t('Settings.SaveSuccess') || 'Settings saved successfully');
     } catch (e) {
-      message.error('Failed to save settings');
+      message.error(t('Settings.SaveFailed') || 'Failed to save settings');
     }
   };
 
@@ -60,292 +93,343 @@ const Settings: React.FC = () => {
   };
 
   return (
-    <Card title={t('Settings.Tab.Settings')} loading={loading} variant="borderless">
+    <div className="settings-container">
+      {/* Page Header */}
+      <div className="settings-header">
+        <Title level={2} style={{ margin: 0, marginBottom: 8 }}>{t('Settings.Tab.Settings')}</Title>
+        <Text type="secondary">{t('Settings.Hint')}</Text>
+      </div>
+
       <Form
-        form={form}
+        
         layout="vertical"
         onFinish={onFinish}
         initialValues={{
           Percent: 95,
           Thumbnails: 2,
           MaxDegreeOfParallelism: -1,
-          HardwareAccelerationMode: 1 // auto
+          HardwareAccelerationMode: 1
         }}
       >
-        {/* Hint about hovering for more info */}
-        <Text type="warning" style={{ display: 'block', marginBottom: 16 }}>
-          {t('Settings.Hint')}
-        </Text>
-
-        <Divider orientation="left">{t('Settings.Tab.Scanner')}</Divider>
-        
-        {/* Includes */}
-        <div style={{ marginBottom: 16 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-                <Text strong>{t('Settings.SearchDirs')}</Text>
-                <Button type="dashed" size="small" icon={<PlusOutlined />} onClick={() => setShowIncludePicker(true)}>
-                    {t('Settings.Add')}
+        <div className="settings-grid">
+          {/* Scanner Card - Folders */}
+          <Card
+            className="settings-card"
+            title={<CardTitle icon={<FolderOutlined />} iconClass="scanner" title={t('Settings.Tab.Scanner')} />}
+            loading={loading}
+          >
+            {/* Include Folders */}
+            <div style={{ marginBottom: 24 }}>
+              <div className="section-header">
+                <span className="section-title">{t('Settings.SearchDirs')}</span>
+                <Button
+                  type="primary"
+                  ghost
+                  size="small"
+                  icon={<PlusOutlined />}
+                  onClick={() => setShowIncludePicker(true)}
+                  style={{ borderRadius: 20 }}
+                >
+                  {t('Settings.Add')}
                 </Button>
-            </div>
-            <List
+              </div>
+              <List
+                className="folder-list"
                 size="small"
-                bordered
+                locale={{ emptyText: t('Settings.NoFolders') || 'No folders added' }}
                 dataSource={includes}
                 renderItem={item => (
-                    <List.Item actions={[<Button type="text" danger icon={<DeleteOutlined />} onClick={() => removeItem(includes, setIncludes, item)} />]}>
-                        {item}
-                    </List.Item>
+                  <List.Item
+                    actions={[
+                      <Button
+                        type="text"
+                        danger
+                        icon={<DeleteOutlined />}
+                        onClick={() => removeItem(includes, setIncludes, item)}
+                      />
+                    ]}
+                  >
+                    <Text ellipsis style={{ maxWidth: '100%' }}>{item}</Text>
+                  </List.Item>
                 )}
-            />
-            <Text type="warning" style={{ fontSize: 12 }}>{t('Settings.DragDropHint')}</Text>
-        </div>
-
-        {/* Blacklists */}
-        <div style={{ marginBottom: 24 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-                <Text strong>{t('Settings.ExcludeDirs')}</Text>
-                <Button type="dashed" size="small" icon={<PlusOutlined />} onClick={() => setShowExcludePicker(true)}>
-                    {t('Settings.Add')}
-                </Button>
+              />
             </div>
-            <List
+
+            {/* Exclude Folders */}
+            <div>
+              <div className="section-header">
+                <span className="section-title">{t('Settings.ExcludeDirs')}</span>
+                <Button
+                  type="primary"
+                  ghost
+                  size="small"
+                  icon={<PlusOutlined />}
+                  onClick={() => setShowExcludePicker(true)}
+                  style={{ borderRadius: 20 }}
+                >
+                  {t('Settings.Add')}
+                </Button>
+              </div>
+              <List
+                className="folder-list"
                 size="small"
-                bordered
+                locale={{ emptyText: t('Settings.NoFolders') || 'No folders added' }}
                 dataSource={blacklists}
                 renderItem={item => (
-                    <List.Item actions={[<Button type="text" danger icon={<DeleteOutlined />} onClick={() => removeItem(blacklists, setBlacklists, item)} />]}>
-                        {item}
-                    </List.Item>
+                  <List.Item
+                    actions={[
+                      <Button
+                        type="text"
+                        danger
+                        icon={<DeleteOutlined />}
+                        onClick={() => removeItem(blacklists, setBlacklists, item)}
+                      />
+                    ]}
+                  >
+                    <Text ellipsis style={{ maxWidth: '100%' }}>{item}</Text>
+                  </List.Item>
                 )}
-            />
-            <Text type="warning" style={{ fontSize: 12 }}>{t('Settings.DragDropHint')}</Text>
-        </div>
-        
-        <Divider orientation="left">{t('Settings.Tab.Misc')}</Divider>
-        <Space wrap>
-            <Form.Item label={t('Settings.IncludeSubDirs')} name="IncludeSubDirectories" valuePropName="checked">
-              <Switch />
-            </Form.Item>
-            <Form.Item label={t('Settings.IncludeImages')} name="IncludeImages" valuePropName="checked">
-              <Switch />
-            </Form.Item>
-            <Form.Item label={t('Settings.IgnoreReadOnly')} name="IgnoreReadOnlyFolders" valuePropName="checked">
-              <Switch />
-            </Form.Item>
-            <Form.Item 
-              label={<LabelWithTooltip label={t('Settings.GeneratePreviews')} tooltip={t('ToolTip.Settings.GeneratePreviews')} />} 
-              name="GeneratePreviewThumbnails" 
-              valuePropName="checked"
-            >
-              <Switch />
-            </Form.Item>
-            <Form.Item 
-              label={<LabelWithTooltip label={t('Settings.ExcludeReparse')} tooltip={t('ToolTip.Settings.ExcludeReparse')} />} 
-              name="IgnoreReparsePoints" 
-              valuePropName="checked"
-            >
-              <Switch />
-            </Form.Item>
-            <Form.Item 
-              label={<LabelWithTooltip label={t('Settings.ExcludeHardLinks')} tooltip={t('ToolTip.Settings.ExcludeHardLinks')} />} 
-              name="ExcludeHardLinks" 
-              valuePropName="checked"
-            >
-              <Switch />
-            </Form.Item>
-            <Form.Item 
-              label={<LabelWithTooltip label={t('Settings.IncludeNonExisting')} tooltip={t('ToolTip.Settings.IncludeNonExisting')} />} 
-              name="IncludeNonExistingFiles" 
-              valuePropName="checked"
-            >
-              <Switch />
-            </Form.Item>
-            <Form.Item 
-              label={<LabelWithTooltip label={t('Settings.ScanAgainstDb')} tooltip={t('ToolTip.Settings.ScanAgainstDb')} />} 
-              name="ScanAgainstEntireDatabase" 
-              valuePropName="checked"
-            >
-              <Switch />
-            </Form.Item>
-        </Space>
+              />
+            </div>
+          </Card>
 
-        <Divider orientation="left">{t('Settings.FilesNote')}</Divider>
-        <Row gutter={16} >
-            <Col span={8}>
-                <Form.Item 
-                  label={<LabelWithTooltip label={t('Settings.Percent')} tooltip={t('ToolTip.Settings.Percent')} />} 
-                  name="Percent"
-                >
-                  <InputNumber min={1} max={100} style={{ width: '100%' }} addonAfter="%" />
-                </Form.Item>
-            </Col>
-            <Col span={8}>
-                <Form.Item 
-                  label={<LabelWithTooltip label={t('Settings.DurationDiff')} tooltip={t('ToolTip.Settings.DurationDiff')} />} 
-                  name="PercentDurationDifference"
-                >
-                  <InputNumber min={0} max={100} style={{ width: '100%' }} addonAfter="%" />
-                </Form.Item>
-            </Col>
-            <Col span={8}>
-                <Form.Item 
-                  label={<LabelWithTooltip label={t('Settings.Thumbnails')} tooltip={t('ToolTip.Settings.Thumbnails')} />} 
-                  name="Thumbnails"
-                >
-                  <InputNumber min={1} max={100} style={{ width: '100%' }} />
-                </Form.Item>
-            </Col>
-        </Row>
+          {/* Misc Settings Card */}
+          <Card
+            className="settings-card"
+            title={<CardTitle icon={<SettingOutlined />} iconClass="misc" title={t('Settings.Tab.Misc')} />}
+            loading={loading}
+          >
+            <div className="switch-group">
+              <SwitchItem name="IncludeSubDirectories" label={t('Settings.IncludeSubDirs')} />
+              <SwitchItem name="IncludeImages" label={t('Settings.IncludeImages')} />
+              <SwitchItem name="IgnoreReadOnlyFolders" label={t('Settings.IgnoreReadOnly')} />
+              <SwitchItem
+                
+                name="GeneratePreviewThumbnails"
+                label={t('Settings.GeneratePreviews')}
+                tooltip={t('ToolTip.Settings.GeneratePreviews')}
+              />
+              <SwitchItem
+                
+                name="IgnoreReparsePoints"
+                label={t('Settings.ExcludeReparse')}
+                tooltip={t('ToolTip.Settings.ExcludeReparse')}
+              />
+              <SwitchItem
+                
+                name="ExcludeHardLinks"
+                label={t('Settings.ExcludeHardLinks')}
+                tooltip={t('ToolTip.Settings.ExcludeHardLinks')}
+              />
+              <SwitchItem
+                
+                name="IncludeNonExistingFiles"
+                label={t('Settings.IncludeNonExisting')}
+                tooltip={t('ToolTip.Settings.IncludeNonExisting')}
+              />
+              <SwitchItem
+                
+                name="ScanAgainstEntireDatabase"
+                label={t('Settings.ScanAgainstDb')}
+                tooltip={t('ToolTip.Settings.ScanAgainstDb')}
+              />
+            </div>
+          </Card>
 
-        <Row gutter={16}>
-             <Col span={12}>
-                <Form.Item 
-                  label={<LabelWithTooltip label={t('Settings.Parallelism')} tooltip={t('ToolTip.Settings.Parallelism')} />} 
+          {/* Matching Settings Card */}
+          <Card
+            className="settings-card"
+            title={<CardTitle icon={<ControlOutlined />} iconClass="matching" title={t('Settings.FilesNote')} />}
+            loading={loading}
+          >
+            <div className="input-group">
+              <Form.Item
+                label={<LabelWithTooltip label={t('Settings.Percent')} tooltip={t('ToolTip.Settings.Percent')} />}
+                name="Percent"
+              >
+                <InputNumber min={1} max={100} style={{ width: '100%' }} addonAfter="%" />
+              </Form.Item>
+              <Form.Item
+                label={<LabelWithTooltip label={t('Settings.DurationDiff')} tooltip={t('ToolTip.Settings.DurationDiff')} />}
+                name="PercentDurationDifference"
+              >
+                <InputNumber min={0} max={100} style={{ width: '100%' }} addonAfter="%" />
+              </Form.Item>
+              <Form.Item
+                label={<LabelWithTooltip label={t('Settings.Thumbnails')} tooltip={t('ToolTip.Settings.Thumbnails')} />}
+                name="Thumbnails"
+              >
+                <InputNumber min={1} max={100} style={{ width: '100%' }} />
+              </Form.Item>
+            </div>
+          </Card>
+
+          {/* Performance Settings Card */}
+          <Card
+            className="settings-card"
+            title={<CardTitle icon={<ThunderboltOutlined />} iconClass="performance" title={t('Settings.Performance') || 'Performance'} />}
+            loading={loading}
+          >
+            <Row gutter={[20, 20]}>
+              <Col xs={24} sm={12}>
+                <Form.Item
+                  label={<LabelWithTooltip label={t('Settings.Parallelism')} tooltip={t('ToolTip.Settings.Parallelism')} />}
                   name="MaxDegreeOfParallelism"
                 >
                   <InputNumber min={-1} style={{ width: '100%' }} />
                 </Form.Item>
-             </Col>
-             <Col span={12}>
-                <Form.Item 
-                  label={<LabelWithTooltip label={t('Settings.HWAccel')} tooltip={t('ToolTip.Settings.HWAccel')} />} 
+              </Col>
+              <Col xs={24} sm={12}>
+                <Form.Item
+                  label={<LabelWithTooltip label={t('Settings.HWAccel')} tooltip={t('ToolTip.Settings.HWAccel')} />}
                   name="HardwareAccelerationMode"
                 >
-                    <Select>
-                        <Option value={0}>None</Option>
-                        <Option value={1}>Auto</Option>
-                        <Option value={2}>VDPAU</Option>
-                        <Option value={3}>DXVA2</Option>
-                        <Option value={4}>VAAPI</Option>
-                        <Option value={5}>QSV</Option>
-                        <Option value={6}>CUDA</Option>
-                        <Option value={7}>VideoToolbox</Option>
-                        <Option value={8}>D3D11VA</Option>
-                        <Option value={9}>DRM</Option>
-                        <Option value={10}>MediaCodec</Option>
-                        <Option value={11}>Vulkan</Option>
-                    </Select>
+                  <Select>
+                    <Option value={0}>None</Option>
+                    <Option value={1}>Auto</Option>
+                    <Option value={2}>VDPAU (Linux)</Option>
+                    <Option value={3}>DXVA2 (Windows)</Option>
+                    <Option value={4}>VAAPI (Linux)</Option>
+                    <Option value={5}>QSV (Intel)</Option>
+                    <Option value={6}>CUDA (NVIDIA)</Option>
+                    <Option value={7}>VideoToolbox (macOS)</Option>
+                    <Option value={8}>D3D11VA (Windows)</Option>
+                    <Option value={9}>DRM (Linux)</Option>
+                    <Option value={10}>MediaCodec (Android)</Option>
+                    <Option value={11}>Vulkan</Option>
+                  </Select>
                 </Form.Item>
-             </Col>
-        </Row>
-        
-        <Divider orientation="left">Advanced</Divider>
-        <Space wrap>
-            <Form.Item 
-              label={<LabelWithTooltip label={t('Settings.UsePHash')} tooltip={t('ToolTip.Settings.UsePHash')} />} 
-              name="UsePHash" 
-              valuePropName="checked"
-            >
-              <Switch />
-            </Form.Item>
-            <Form.Item 
-              label={<LabelWithTooltip label={t('Settings.UseExif')} tooltip={t('ToolTip.Settings.UseExif')} />} 
-              name="UseExifCreationDate" 
-              valuePropName="checked"
-            >
-              <Switch />
-            </Form.Item>
-            <Form.Item 
-              label={<LabelWithTooltip label={t('Settings.IgnoreBlack')} tooltip={t('ToolTip.Settings.IgnoreBlack')} />} 
-              name="IgnoreBlackPixels" 
-              valuePropName="checked"
-            >
-              <Switch />
-            </Form.Item>
-            <Form.Item 
-              label={<LabelWithTooltip label={t('Settings.IgnoreWhite')} tooltip={t('ToolTip.Settings.IgnoreWhite')} />} 
-              name="IgnoreWhitePixels" 
-              valuePropName="checked"
-            >
-              <Switch />
-            </Form.Item>
-            <Form.Item 
-              label={<LabelWithTooltip label={t('Settings.NativeFFmpeg')} tooltip={t('ToolTip.Settings.NativeFFmpeg')} />} 
-              name="UseNativeFfmpegBinding" 
-              valuePropName="checked"
-            >
-              <Switch />
-            </Form.Item>
-            <Form.Item 
-              label={<LabelWithTooltip label={t('Settings.CompareFlipped')} tooltip={t('ToolTip.Settings.CompareFlipped')} />} 
-              name="CompareHorizontallyFlipped" 
-              valuePropName="checked"
-            >
-              <Switch />
-            </Form.Item>
-            <Form.Item 
-              label={<LabelWithTooltip label={t('Settings.ExtendedLogging')} tooltip={t('ToolTip.Settings.ExtendedLogging')} />} 
-              name="ExtendedFFToolsLogging" 
-              valuePropName="checked"
-            >
-              <Switch />
-            </Form.Item>
-            <Form.Item 
-              label={<LabelWithTooltip label={t('Settings.RetrySampling')} tooltip={t('ToolTip.Settings.RetrySampling')} />} 
-              name="AlwaysRetryFailedSampling" 
-              valuePropName="checked"
-            >
-              <Switch />
-            </Form.Item>
-            <Form.Item 
-              label={<LabelWithTooltip label={t('Settings.AutoBackup')} tooltip={t('ToolTip.Settings.AutoBackup')} />} 
-              name="BackupAfterListChanged" 
-              valuePropName="checked"
-            >
-              <Switch />
-            </Form.Item>
-            <Form.Item 
-              label={<LabelWithTooltip label={t('Settings.SaveOnExit')} tooltip={t('ToolTip.Settings.SaveOnExit')} />} 
-              name="AskToSaveResultsOnExit" 
-              valuePropName="checked"
-            >
-              <Switch />
-            </Form.Item>
-        </Space>
+              </Col>
+            </Row>
+          </Card>
 
-        <Form.Item 
-          label={<LabelWithTooltip label={t('Settings.CustomFFArgs')} tooltip={t('ToolTip.Settings.CustomFFArgs')} />} 
-          name="CustomFFArguments"
-        >
-            <Input placeholder="e.g. -hwaccel cuda" />
-        </Form.Item>
+          {/* Advanced Settings Card */}
+          <Card
+            className="settings-card"
+            title={<CardTitle icon={<ExperimentOutlined />} iconClass="advanced" title={t('Settings.Advanced') || 'Advanced'} />}
+            loading={loading}
+          >
+            <div className="switch-group">
+              <SwitchItem
+                
+                name="UsePHash"
+                label={t('Settings.UsePHash')}
+                tooltip={t('ToolTip.Settings.UsePHash')}
+              />
+              <SwitchItem
+                
+                name="UseExifCreationDate"
+                label={t('Settings.UseExif')}
+                tooltip={t('ToolTip.Settings.UseExif')}
+              />
+              <SwitchItem
+                
+                name="IgnoreBlackPixels"
+                label={t('Settings.IgnoreBlack')}
+                tooltip={t('ToolTip.Settings.IgnoreBlack')}
+              />
+              <SwitchItem
+                
+                name="IgnoreWhitePixels"
+                label={t('Settings.IgnoreWhite')}
+                tooltip={t('ToolTip.Settings.IgnoreWhite')}
+              />
+              <SwitchItem
+                
+                name="UseNativeFfmpegBinding"
+                label={t('Settings.NativeFFmpeg')}
+                tooltip={t('ToolTip.Settings.NativeFFmpeg')}
+              />
+              <SwitchItem
+                
+                name="CompareHorizontallyFlipped"
+                label={t('Settings.CompareFlipped')}
+                tooltip={t('ToolTip.Settings.CompareFlipped')}
+              />
+              <SwitchItem
+                
+                name="ExtendedFFToolsLogging"
+                label={t('Settings.ExtendedLogging')}
+                tooltip={t('ToolTip.Settings.ExtendedLogging')}
+              />
+              <SwitchItem
+                
+                name="AlwaysRetryFailedSampling"
+                label={t('Settings.RetrySampling')}
+                tooltip={t('ToolTip.Settings.RetrySampling')}
+              />
+              <SwitchItem
+                
+                name="BackupAfterListChanged"
+                label={t('Settings.AutoBackup')}
+                tooltip={t('ToolTip.Settings.AutoBackup')}
+              />
+              <SwitchItem
+                
+                name="AskToSaveResultsOnExit"
+                label={t('Settings.SaveOnExit')}
+                tooltip={t('ToolTip.Settings.SaveOnExit')}
+              />
+            </div>
+          </Card>
 
-        <Form.Item 
-          label={<LabelWithTooltip label={t('Settings.CustomDbFolder')} tooltip={t('ToolTip.Settings.CustomDbFolder')} />} 
-          name="CustomDatabaseFolder"
-        >
-            <Input placeholder="Leave empty for default location" />
-        </Form.Item>
+          {/* Custom Settings Card */}
+          <Card
+            className="settings-card"
+            title={<CardTitle icon={<ToolOutlined />} iconClass="custom" title={t('Settings.Custom') || 'Custom'} />}
+            loading={loading}
+          >
+            <Form.Item
+              label={<LabelWithTooltip label={t('Settings.CustomFFArgs')} tooltip={t('ToolTip.Settings.CustomFFArgs')} />}
+              name="CustomFFArguments"
+            >
+              <Input placeholder="e.g. -hwaccel cuda" />
+            </Form.Item>
 
-        <Form.Item>
-          <Button type="primary" htmlType="submit">
+            <Form.Item
+              label={<LabelWithTooltip label={t('Settings.CustomDbFolder')} tooltip={t('ToolTip.Settings.CustomDbFolder')} />}
+              name="CustomDatabaseFolder"
+            >
+              <Input placeholder={t('Settings.DefaultLocation') || 'Leave empty for default location'} />
+            </Form.Item>
+          </Card>
+        </div>
+
+        {/* Save Button */}
+        <div style={{ marginTop: 32, textAlign: 'center' }}>
+          <Button
+            type="primary"
+            htmlType="submit"
+            className="save-button"
+            icon={<SaveOutlined />}
+            size="large"
+          >
             {t('Settings.Save')}
           </Button>
-        </Form.Item>
+        </div>
       </Form>
 
-      <FolderPicker 
-        open={showIncludePicker} 
+      {/* Folder Pickers */}
+      <FolderPicker
+        open={showIncludePicker}
         value={includes}
         onCancel={() => setShowIncludePicker(false)}
         onChange={(vals) => {
-            // Merge unique
-            setIncludes(prev => Array.from(new Set([...prev, ...vals])));
-            setShowIncludePicker(false);
+          setIncludes(prev => Array.from(new Set([...prev, ...vals])));
+          setShowIncludePicker(false);
         }}
       />
-      
-      <FolderPicker 
-        open={showExcludePicker} 
+
+      <FolderPicker
+        open={showExcludePicker}
         value={blacklists}
         onCancel={() => setShowExcludePicker(false)}
         onChange={(vals) => {
-            // Merge unique
-            setBlacklists(prev => Array.from(new Set([...prev, ...vals])));
-            setShowExcludePicker(false);
+          setBlacklists(prev => Array.from(new Set([...prev, ...vals])));
+          setShowExcludePicker(false);
         }}
       />
-    </Card>
+    </div>
   );
 };
 

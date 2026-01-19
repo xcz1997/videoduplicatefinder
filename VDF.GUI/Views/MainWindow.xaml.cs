@@ -53,6 +53,9 @@ namespace VDF.GUI.Views {
 			this.FindControl<ListBox>("ListboxBlacklist")!.AddHandler(DragDrop.DropEvent, DropBlacklist);
 			this.FindControl<ListBox>("ListboxBlacklist")!.AddHandler(DragDrop.DragOverEvent, DragOver);
 
+			// Activity Bar navigation
+			SetupActivityBarNavigation();
+
 			ApplicationHelpers.CurrentApplicationLifetime.Startup += MainWindow_Startup;
 			ApplicationHelpers.CurrentApplicationLifetime.Exit += MainWindow_Exit;
 			ApplicationHelpers.CurrentApplicationLifetime.ShutdownMode = ShutdownMode.OnExplicitShutdown;
@@ -168,5 +171,28 @@ namespace VDF.GUI.Views {
 		void MainWindow_Startup(object? sender, ControlledApplicationLifetimeStartupEventArgs e) => ApplicationHelpers.MainWindowDataContext.LoadDatabase();
 
 		void InitializeComponent() => AvaloniaXamlLoader.Load(this);
+
+		void SetupActivityBarNavigation() {
+			var tabControl = this.FindControl<TabControl>("TabControl");
+			var radioNavScanner = this.FindControl<RadioButton>("RadioNavScanner");
+			var radioNavSettings = this.FindControl<RadioButton>("RadioNavSettings");
+			var radioNavLog = this.FindControl<RadioButton>("RadioNavLog");
+
+			if (tabControl == null || radioNavScanner == null || radioNavSettings == null || radioNavLog == null)
+				return;
+
+			radioNavScanner.IsCheckedChanged += (s, e) => {
+				if (radioNavScanner.IsChecked == true)
+					tabControl.SelectedIndex = 0;
+			};
+			radioNavSettings.IsCheckedChanged += (s, e) => {
+				if (radioNavSettings.IsChecked == true)
+					tabControl.SelectedIndex = 1;
+			};
+			radioNavLog.IsCheckedChanged += (s, e) => {
+				if (radioNavLog.IsChecked == true)
+					tabControl.SelectedIndex = 2;
+			};
+		}
 	}
 }

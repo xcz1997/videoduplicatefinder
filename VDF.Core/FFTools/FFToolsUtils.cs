@@ -40,11 +40,43 @@ namespace VDF.Core.FFTools {
 		/// <param name="tool"></param>
 		/// <returns>path or null if not found</returns>
 		internal static string? GetPath(FFTool tool) {
+			var toolName = tool == FFTool.FFmpeg ? ffMpegPlatformName : ffProbePlatformName;
 
-			if (File.Exists($"{CoreUtils.CurrentFolder}\\bin\\{(tool == FFTool.FFmpeg ? ffMpegPlatformName : ffProbePlatformName)}"))
-				return $"{CoreUtils.CurrentFolder}\\bin\\{(tool == FFTool.FFmpeg ? ffMpegPlatformName : ffProbePlatformName)}";
-			if (File.Exists(Path.Combine(CoreUtils.CurrentFolder, tool == FFTool.FFmpeg ? ffMpegPlatformName : ffProbePlatformName)))
-				return Path.Combine(CoreUtils.CurrentFolder, tool == FFTool.FFmpeg ? ffMpegPlatformName : ffProbePlatformName);
+			// Check bin subfolder (cross-platform compatible)
+			var binPath = Path.Combine(CoreUtils.CurrentFolder, "bin", toolName);
+			if (File.Exists(binPath))
+				return binPath;
+
+			// Check current folder
+			var currentPath = Path.Combine(CoreUtils.CurrentFolder, toolName);
+			if (File.Exists(currentPath))
+				return currentPath;
+
+			// macOS: Check Homebrew locations
+			if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX)) {
+				// Apple Silicon Homebrew location
+				var homebrewArm = Path.Combine("/opt/homebrew/bin", toolName);
+				if (File.Exists(homebrewArm))
+					return homebrewArm;
+
+				// Intel Homebrew location
+				var homebrewIntel = Path.Combine("/usr/local/bin", toolName);
+				if (File.Exists(homebrewIntel))
+					return homebrewIntel;
+			}
+
+			// Linux: Check common installation locations
+			if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux)) {
+				string[] linuxPaths = [
+					Path.Combine("/usr/bin", toolName),
+					Path.Combine("/usr/local/bin", toolName),
+					Path.Combine("/snap/bin", toolName)
+				];
+				foreach (var linuxPath in linuxPaths) {
+					if (File.Exists(linuxPath))
+						return linuxPath;
+				}
+			}
 
 			var environmentVariables = Environment.GetEnvironmentVariable("PATH")?.Split(Path.PathSeparator);
 			if (environmentVariables == null) return null;
