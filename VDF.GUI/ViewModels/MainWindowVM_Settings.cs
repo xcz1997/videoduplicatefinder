@@ -162,6 +162,50 @@ namespace VDF.GUI.ViewModels {
 			}
 		});
 		public IEnumerable<string> AvailableLanguages => new[] { "en", "zh" };
+
+		/// <summary>
+		/// Gets all available media server templates for UI binding
+		/// </summary>
+		public IEnumerable<MediaServerTemplates.Template> AvailableTemplates => MediaServerTemplates.AllTemplates;
+
+		/// <summary>
+		/// Command to toggle a template selection and update the exclusion list
+		/// </summary>
+		public ReactiveCommand<string, Unit> ToggleTemplateCommand => ReactiveCommand.Create<string>(templateId => {
+			if (SettingsFile.Instance.SelectedMediaTemplates.Contains(templateId)) {
+				// Remove template and its patterns
+				SettingsFile.Instance.SelectedMediaTemplates.Remove(templateId);
+				var template = MediaServerTemplates.GetTemplate(templateId);
+				if (template != null) {
+					foreach (var pattern in template.Patterns) {
+						SettingsFile.Instance.FilePathNotContainsTexts.Remove(pattern);
+					}
+				}
+			}
+			else {
+				// Add template and its patterns (avoid duplicates)
+				SettingsFile.Instance.SelectedMediaTemplates.Add(templateId);
+				var template = MediaServerTemplates.GetTemplate(templateId);
+				if (template != null) {
+					foreach (var pattern in template.Patterns) {
+						if (!SettingsFile.Instance.FilePathNotContainsTexts.Contains(pattern)) {
+							SettingsFile.Instance.FilePathNotContainsTexts.Add(pattern);
+						}
+					}
+				}
+			}
+			// Enable the filter if any template is selected
+			if (SettingsFile.Instance.SelectedMediaTemplates.Count > 0) {
+				SettingsFile.Instance.FilterByFilePathNotContains = true;
+			}
+		});
+
+		/// <summary>
+		/// Checks if a template is currently selected
+		/// </summary>
+		public bool IsTemplateSelected(string templateId) =>
+			SettingsFile.Instance.SelectedMediaTemplates.Contains(templateId);
+
 		public string SelectedLanguage {
 			get => SettingsFile.Instance.Language;
 			set {

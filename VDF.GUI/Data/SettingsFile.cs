@@ -40,6 +40,9 @@ namespace VDF.GUI.Data {
 		[JsonPropertyName("Blacklists")]
 		public ObservableCollection<string> Blacklists { get; set; } = new();
 
+		[JsonPropertyName("SelectedMediaTemplates")]
+		public ObservableCollection<string> SelectedMediaTemplates { get; set; } = new();
+
 		string _LastCustomSelectExpression = string.Empty;
 		[JsonPropertyName("LastCustomSelectExpression")]
 		public string LastCustomSelectExpression {
@@ -199,11 +202,26 @@ namespace VDF.GUI.Data {
 			set => this.RaiseAndSetIfChanged(ref _CustomDatabaseFolder, value);
 		}
 
+		string _ThumbnailCacheFolder = string.Empty;
+		[JsonPropertyName("ThumbnailCacheFolder")]
+		public string ThumbnailCacheFolder {
+			get => _ThumbnailCacheFolder;
+			set => this.RaiseAndSetIfChanged(ref _ThumbnailCacheFolder, value);
+		}
+
 		string _Language = "zh";
 		[JsonPropertyName("Language")]
 		public string Language {
 			get => _Language;
 			set => this.RaiseAndSetIfChanged(ref _Language, value);
+		}
+
+		// GPU monitoring method: "auto", "macmon", "ioreg", "nvidia-smi", "none"
+		string _GpuMonitorMethod = "auto";
+		[JsonPropertyName("GpuMonitorMethod")]
+		public string GpuMonitorMethod {
+			get => _GpuMonitorMethod;
+			set => this.RaiseAndSetIfChanged(ref _GpuMonitorMethod, value);
 		}
 
 		public static void SaveSettings(string? path = null) {

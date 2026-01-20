@@ -14,6 +14,8 @@
 // */
 //
 
+using System.Collections;
+using System.Collections.ObjectModel;
 using System.Globalization;
 using System.Text;
 using ActiproSoftware.UI.Avalonia.Themes;
@@ -24,6 +26,25 @@ using Avalonia.Styling;
 using VDF.GUI.Data;
 
 namespace VDF.GUI.Mvvm {
+	/// <summary>
+	/// Converter that checks if a collection contains a specific value.
+	/// Used for checkbox bindings in template selection menus.
+	/// </summary>
+	public sealed class ContainsConverter : IValueConverter {
+		public object Convert(object? value, Type targetType, object? parameter, CultureInfo culture) {
+			if (value is IEnumerable collection && parameter is string item) {
+				foreach (var element in collection) {
+					if (element?.ToString() == item)
+						return true;
+				}
+			}
+			return false;
+		}
+
+		public object ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture) =>
+			throw new NotImplementedException();
+	}
+
 	public sealed class NegateBoolConverter : IValueConverter {
 		public object Convert(object? value, Type targetType, object? parameter, CultureInfo culture) => !(bool)value!;
 

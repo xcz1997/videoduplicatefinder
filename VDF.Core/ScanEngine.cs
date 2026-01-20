@@ -194,7 +194,7 @@ namespace VDF.Core {
 				if (!Directory.Exists(path)) continue;
 
 				foreach (FileInfo file in FileUtils.GetFilesRecursive(path, Settings.IgnoreReadOnlyFolders, Settings.IgnoreReparsePoints,
-					Settings.IncludeSubDirectories, Settings.IncludeImages, Settings.BlackList.ToList())) {
+					Settings.IncludeSubDirectories, Settings.IncludeImages, Settings.BlackList.ToList(), Settings.ExcludeFilePatterns)) {
 					FileEntry fEntry;
 					try {
 						fEntry = new(file);
@@ -287,8 +287,13 @@ namespace VDF.Core {
 				return true;
 			if (Settings.FilterByFilePathNotContains) {
 				bool contains = false;
+				var fileName = Path.GetFileName(entry.Path);
 				foreach (var f in Settings.FilePathNotContainsTexts) {
-					if (System.IO.Enumeration.FileSystemName.MatchesSimpleExpression(f, entry.Path)) {
+					// Check both full path and file name for pattern matching
+					// This allows patterns like "poster.*" to match file names
+					// and patterns like "extrafanart" to match path components
+					if (System.IO.Enumeration.FileSystemName.MatchesSimpleExpression(f, entry.Path) ||
+						System.IO.Enumeration.FileSystemName.MatchesSimpleExpression(f, fileName)) {
 						contains = true;
 						break;
 					}

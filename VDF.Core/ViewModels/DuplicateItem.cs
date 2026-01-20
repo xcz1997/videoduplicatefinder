@@ -15,6 +15,7 @@
 //
 
 using System.Diagnostics;
+using System.Runtime.InteropServices;
 using System.Text.Json.Serialization;
 using SixLabors.ImageSharp;
 using VDF.Core.Utils;
@@ -144,5 +145,16 @@ namespace VDF.Core.ViewModels {
 			ThumbnailsUpdated?.Invoke();
 		}
 
+		/// <summary>
+		/// Returns a unique cache key for this item's thumbnail based on file path hash.
+		/// </summary>
+		[JsonIgnore]
+		public string ThumbnailCacheKey {
+			get {
+				ReadOnlySpan<byte> bytes = MemoryMarshal.AsBytes(Path.AsSpan());
+				byte[] hash = System.IO.Hashing.XxHash64.Hash(bytes);
+				return Convert.ToHexStringLower(hash);
+			}
+		}
 	}
 }

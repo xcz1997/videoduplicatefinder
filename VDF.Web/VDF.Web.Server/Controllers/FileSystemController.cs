@@ -25,7 +25,9 @@ namespace VDF.Web.Server.Controllers {
                         Path = d.Name,
                         IsDirectory = true,
                         HasChildren = true
-                    });
+                    })
+                    .DistinctBy(d => d.Path) // Remove duplicates
+                    .ToList();
                 return Ok(drives);
             } catch (Exception ex) {
                 return BadRequest(ex.Message);
@@ -45,7 +47,9 @@ namespace VDF.Web.Server.Controllers {
                         Path = d.FullName,
                         IsDirectory = true,
                         HasChildren = true // Simplified assumption
-                    });
+                    })
+                    .DistinctBy(d => d.Path) // Remove duplicates
+                    .ToList();
 
                 return Ok(dirs);
             } catch (Exception ex) {

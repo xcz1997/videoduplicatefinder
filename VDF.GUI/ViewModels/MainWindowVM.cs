@@ -220,10 +220,10 @@ namespace VDF.GUI.ViewModels {
 			Scanner.NoThumbnailImage = SixLabors.ImageSharp.Image.Load(AssetLoader.Open(new Uri("avares://VDF.GUI/Assets/icon.png")));
 
 			try {
-				TempDirectory = TempExtractionManager.Register(new("VDF-"));
-				Utils.ThumbCacheHelpers.Provider = Utils.ThumbPack.Open(TempDirectory.Path);
+				// Use persistent thumbnail cache
+				Utils.ThumbCacheHelpers.Provider = Utils.ThumbCacheHelpers.OpenPersistentCache();
+				RefreshThumbnailCacheSize();
 			}
-
 			catch { Utils.ThumbCacheHelpers.Provider = null; }
 
 			try {
@@ -737,6 +737,27 @@ namespace VDF.GUI.ViewModels {
 				MessageBoxButtons.Yes | MessageBoxButtons.No);
 			if (dlgResult != MessageBoxButtons.Yes) return;
 			ScanEngine.ClearDatabase();
+			await MessageBoxService.Show("Done!");
+		});
+
+		string _ThumbnailCacheSize = string.Empty;
+		public string ThumbnailCacheSize {
+			get => _ThumbnailCacheSize;
+			set => this.RaiseAndSetIfChanged(ref _ThumbnailCacheSize, value);
+		}
+
+		public void RefreshThumbnailCacheSize() {
+			var size = Utils.ThumbCacheHelpers.GetCacheSize();
+			ThumbnailCacheSize = Utils.ThumbCacheHelpers.FormatCacheSize(size);
+		}
+
+		public ReactiveCommand<Unit, Unit> ClearThumbnailCacheCommand => ReactiveCommand.CreateFromTask(async () => {
+			MessageBoxButtons? dlgResult = await MessageBoxService.Show(
+				App.Lang["Dialog.ClearCacheConfirm"] ?? "Are you sure you want to clear all thumbnail cache?",
+				MessageBoxButtons.Yes | MessageBoxButtons.No);
+			if (dlgResult != MessageBoxButtons.Yes) return;
+			Utils.ThumbCacheHelpers.ClearCache();
+			RefreshThumbnailCacheSize();
 			await MessageBoxService.Show("Done!");
 		});
 
@@ -1254,8 +1275,12 @@ Non-Windows setup:
 			Duplicates.Clear();
 			_groupIndex.Clear();
 
-			TempDirectory = TempExtractionManager.Register(new("VDF-"));
-			Utils.ThumbCacheHelpers.SetActiveProvider(Utils.ThumbPack.Open(TempDirectory.Path));
+			// Re-open persistent cache (in case it was cleared or folder changed)
+			try {
+				Utils.ThumbCacheHelpers.Provider?.Dispose();
+				Utils.ThumbCacheHelpers.Provider = Utils.ThumbCacheHelpers.OpenPersistentCache();
+			}
+			catch { Utils.ThumbCacheHelpers.Provider = null; }
 
 			IsScanning = true;
 			IsReadyToCompare = false;

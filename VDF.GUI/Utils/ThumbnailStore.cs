@@ -30,7 +30,7 @@ using DynamicData;
 using VDF.GUI.Utils;
 
 namespace VDF.GUI.Utils {
-	internal static class ThumbCacheHelpers {
+	public static class ThumbCacheHelpers {
 		public static ThumbPack? Provider { get; set; }
 		public static string XxHash64Hex(string s) {
 			ReadOnlySpan<byte> bytes = MemoryMarshal.AsBytes(s.AsSpan());
@@ -57,6 +57,97 @@ namespace VDF.GUI.Utils {
 			DeletePackFolder(path);
 
 			Provider = provider;
+		}
+
+		/// <summary>
+		/// Returns the default thumbnail cache folder based on OS.
+		/// Windows: %LOCALAPPDATA%/VDF/ThumbnailCache/
+		/// macOS: ~/Library/Caches/VDF/ThumbnailCache/
+		/// Linux: ~/.cache/VDF/ThumbnailCache/
+		/// </summary>
+		public static string GetDefaultCacheFolder() {
+			if (OperatingSystem.IsWindows())
+				return Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "VDF", "ThumbnailCache");
+			if (OperatingSystem.IsMacOS())
+				return Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Library", "Caches", "VDF", "ThumbnailCache");
+			// Linux
+			return Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".cache", "VDF", "ThumbnailCache");
+		}
+
+		/// <summary>
+		/// Returns the configured cache folder or the default if not configured.
+		/// </summary>
+		public static string GetCacheFolder() {
+			var customFolder = VDF.GUI.Data.SettingsFile.Instance.ThumbnailCacheFolder;
+			if (!string.IsNullOrWhiteSpace(customFolder)) {
+				// Return custom folder if it's a valid path (directory will be created if needed)
+				try {
+					var fullPath = Path.GetFullPath(customFolder);
+					return fullPath;
+				}
+				catch {
+					// Invalid path, fall back to default
+				}
+			}
+			return GetDefaultCacheFolder();
+		}
+
+		/// <summary>
+		/// Clears all thumbnail cache files.
+		/// </summary>
+		public static void ClearCache() {
+			var cacheFolder = GetCacheFolder();
+			try {
+				// Close current provider first
+				try { Provider?.Dispose(); } catch { }
+				Provider = null;
+
+				if (Directory.Exists(cacheFolder)) {
+					Directory.Delete(cacheFolder, recursive: true);
+				}
+			}
+			catch { /* ignore errors */ }
+		}
+
+		/// <summary>
+		/// Gets the total size of the thumbnail cache in bytes.
+		/// </summary>
+		public static long GetCacheSize() {
+			var cacheFolder = GetCacheFolder();
+			if (!Directory.Exists(cacheFolder))
+				return 0;
+
+			try {
+				return new DirectoryInfo(cacheFolder)
+					.EnumerateFiles("*", SearchOption.AllDirectories)
+					.Sum(fi => fi.Length);
+			}
+			catch {
+				return 0;
+			}
+		}
+
+		/// <summary>
+		/// Formats bytes to a human-readable string.
+		/// </summary>
+		public static string FormatCacheSize(long bytes) {
+			string[] sizes = { "B", "KB", "MB", "GB", "TB" };
+			double len = bytes;
+			int order = 0;
+			while (len >= 1024 && order < sizes.Length - 1) {
+				order++;
+				len /= 1024;
+			}
+			return $"{len:0.##} {sizes[order]}";
+		}
+
+		/// <summary>
+		/// Opens or creates a persistent thumbnail cache in the configured or default location.
+		/// </summary>
+		public static ThumbPack OpenPersistentCache() {
+			var cacheFolder = GetCacheFolder();
+			Directory.CreateDirectory(cacheFolder);
+			return ThumbPack.Open(cacheFolder);
 		}
 	}
 

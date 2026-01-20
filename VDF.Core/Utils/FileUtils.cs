@@ -16,6 +16,7 @@
 
 using System.Linq;
 using System.Runtime.InteropServices;
+using System.Text.RegularExpressions;
 
 namespace VDF.Core.Utils {
 	internal static class FileUtils {
@@ -49,7 +50,40 @@ namespace VDF.Core.Utils {
 			".rm"
 		};
 		static readonly string[] AllExtensions = VideoExtensions.Concat(ImageExtensions).ToArray();
-		internal static List<FileInfo> GetFilesRecursive(string initial, bool ignoreReadonly, bool ignoreReparsePoints, bool recursive, bool includeImages, List<string> excludeFolders) {
+
+		/// <summary>
+		/// Convert glob pattern to regex pattern
+		/// </summary>
+		private static string GlobToRegex(string glob) {
+			// Escape special regex characters, then convert glob wildcards
+			var regex = Regex.Escape(glob)
+				.Replace("\\*", ".*")
+				.Replace("\\?", ".");
+			return "^" + regex + "$";
+		}
+
+		/// <summary>
+		/// Check if filename matches any of the exclusion patterns
+		/// </summary>
+		internal static bool MatchesExclusionPattern(string fileName, IEnumerable<string> patterns) {
+			foreach (var pattern in patterns) {
+				// Handle folder patterns (e.g., "extrafanart/*")
+				if (pattern.Contains('/')) continue; // Skip folder patterns for file matching
+
+				try {
+					var regexPattern = GlobToRegex(pattern);
+					if (Regex.IsMatch(fileName, regexPattern, RegexOptions.IgnoreCase)) {
+						return true;
+					}
+				}
+				catch {
+					// Invalid pattern, skip
+				}
+			}
+			return false;
+		}
+
+		internal static List<FileInfo> GetFilesRecursive(string initial, bool ignoreReadonly, bool ignoreReparsePoints, bool recursive, bool includeImages, List<string> excludeFolders, IEnumerable<string>? excludeFilePatterns = null) {
 			EnumerationOptions enumerationOptions = new() {
 				IgnoreInaccessible = true,
 				AttributesToSkip = FileAttributes.System
@@ -67,15 +101,29 @@ namespace VDF.Core.Utils {
 			while (subFolders.Count > 0) {
 				DirectoryInfo currentFolder = subFolders.Dequeue();
 				try {
+					var validExtensions = includeImages ? AllExtensions : VideoExtensions;
+					var matchingFiles = currentFolder.EnumerateFiles("*", enumerationOptions)
+						.Where(f => validExtensions.Any(x => f.FullName.EndsWith(x, StringComparison.OrdinalIgnoreCase)));
 
-					files.AddRange(currentFolder.EnumerateFiles("*", enumerationOptions)
-					.Where(f => (includeImages ? AllExtensions : VideoExtensions)
-					.Any(x => f.FullName.EndsWith(x, StringComparison.OrdinalIgnoreCase))));
+					// Apply exclusion patterns if provided
+					if (excludeFilePatterns != null && excludeFilePatterns.Any()) {
+						matchingFiles = matchingFiles.Where(f => !MatchesExclusionPattern(f.Name, excludeFilePatterns));
+					}
+
+					files.AddRange(matchingFiles);
 
 					if (!recursive)
 						break;
+
+					// Check for excluded folder patterns (e.g., "extrafanart/*", "trailers/*")
+					var excludedFolderNames = excludeFilePatterns?
+						.Where(p => p.EndsWith("/*"))
+						.Select(p => p.TrimEnd('/', '*'))
+						.ToList() ?? new List<string>();
+
 					foreach (DirectoryInfo subFolder in currentFolder.EnumerateDirectories("*", enumerationOptions)
-						.Where(d => !excludeFolders.Any(x => d.FullName.Equals(x, StringComparison.OrdinalIgnoreCase))))
+						.Where(d => !excludeFolders.Any(x => d.FullName.Equals(x, StringComparison.OrdinalIgnoreCase)))
+						.Where(d => !excludedFolderNames.Any(x => d.Name.Equals(x, StringComparison.OrdinalIgnoreCase))))
 						subFolders.Enqueue(subFolder);
 				}
 				catch (DirectoryNotFoundException) { }

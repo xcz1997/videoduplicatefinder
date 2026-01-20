@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Modal, Tree } from 'antd';
 import { FolderOpenOutlined, HddOutlined } from '@ant-design/icons';
+import { useTranslation } from 'react-i18next';
 import { fileSystem, FileSystemNode } from '../api';
 import { DataNode } from 'antd/es/tree';
 
@@ -24,8 +25,12 @@ const updateTreeData = (list: DataNode[], key: React.Key, children: DataNode[]):
 };
 
 export const FolderPicker: React.FC<FolderPickerProps> = ({ value, onChange, open, onCancel }) => {
+  const { t } = useTranslation();
   const [treeData, setTreeData] = useState<DataNode[]>([]);
   const [selectedPaths, setSelectedPaths] = useState<string[]>(value || []);
+  // Use ref for immediate synchronous check to prevent duplicate loads
+  const loadedKeysRef = useRef<Set<string>>(new Set());
+  const loadingKeysRef = useRef<Set<string>>(new Set());
 
   useEffect(() => {
     if (open) {
@@ -42,18 +47,36 @@ export const FolderPicker: React.FC<FolderPickerProps> = ({ value, onChange, ope
       isLeaf: false,
     }));
     setTreeData(nodes);
+    // Reset loaded/loading keys when reloading drives
+    loadedKeysRef.current = new Set();
+    loadingKeysRef.current = new Set();
   };
 
   const onLoadData = async ({ key }: any) => {
     const path = key as string;
-    const items = await fileSystem.getList(path);
-    const children = items.map((d: FileSystemNode) => ({
-      title: d.name,
-      key: d.path,
-      icon: <FolderOpenOutlined />,
-      isLeaf: !d.isDirectory, // simplified
-    }));
-    setTreeData((origin) => updateTreeData(origin, key, children));
+
+    // Skip if already loaded or currently loading
+    if (loadedKeysRef.current.has(path) || loadingKeysRef.current.has(path)) {
+      return;
+    }
+
+    // Mark as loading immediately (synchronous)
+    loadingKeysRef.current.add(path);
+
+    try {
+      const items = await fileSystem.getList(path);
+      const children = items.map((d: FileSystemNode) => ({
+        title: d.name,
+        key: d.path,
+        icon: <FolderOpenOutlined />,
+        isLeaf: !d.isDirectory,
+      }));
+
+      setTreeData((origin) => updateTreeData(origin, key, children));
+      loadedKeysRef.current.add(path);
+    } finally {
+      loadingKeysRef.current.delete(path);
+    }
   };
 
   const handleOk = () => {
@@ -62,7 +85,7 @@ export const FolderPicker: React.FC<FolderPickerProps> = ({ value, onChange, ope
   };
 
   return (
-    <Modal title="Select Search Directories" open={open} onOk={handleOk} onCancel={onCancel} width={600}>
+    <Modal title={t('FolderPicker.Title')} open={open} onOk={handleOk} onCancel={onCancel} width={600} okText={t('Dialog.OK')} cancelText={t('Dialog.Cancel')}>
       <Tree
         checkable
         showIcon
