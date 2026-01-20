@@ -5,6 +5,7 @@ using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using VDF.Core;
+using VDF.Core.History;
 using VDF.Core.Utils;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.PixelFormats;
@@ -52,6 +53,30 @@ namespace VDF.Web.Server.Services {
         private const int MaxRecentFiles = 100;
         private readonly Queue<RecentFileEntry> _recentFiles = new();
         private readonly object _recentFilesLock = new();
+
+        // History manager for tracking scan history
+        private ScanHistoryManager? _historyManager;
+        private DateTime _scanStartTime;
+        private int _totalFilesScanned;
+        private List<string> _scanFolders = new();
+
+        /// <summary>
+        /// Gets the ScanHistoryManager instance.
+        /// </summary>
+        public ScanHistoryManager GetHistoryManager() {
+            if (_historyManager == null) {
+                var historyFolder = ScanHistoryManager.ResolveHistoryFolder(
+                    VDF.GUI.Data.SettingsFile.Instance.HistoryFolderPath,
+                    VDF.GUI.Data.SettingsFile.Instance.DataFolder);
+                _historyManager = new ScanHistoryManager(historyFolder);
+            }
+            return _historyManager;
+        }
+
+        /// <summary>
+        /// Gets the current scan ID (from history manager).
+        /// </summary>
+        public string? CurrentScanId => _historyManager?.CurrentScanId;
 
         public ScanService() {
             Engine = new ScanEngine();
@@ -107,6 +132,7 @@ namespace VDF.Web.Server.Services {
 
             // Custom settings
             s.CustomFFArguments = newSettings.CustomFFArguments ?? string.Empty;
+            s.DataFolder = newSettings.DataFolder ?? string.Empty;
             s.CustomDatabaseFolder = newSettings.CustomDatabaseFolder ?? string.Empty;
             var oldCacheFolder = s.ThumbnailCacheFolder;
             s.ThumbnailCacheFolder = newSettings.ThumbnailCacheFolder ?? string.Empty;
@@ -276,6 +302,11 @@ namespace VDF.Web.Server.Services {
                 Engine.Settings.IncludeList.Add(path);
             }
 
+            // Record scan start time and folders for history
+            _scanStartTime = DateTime.UtcNow;
+            _scanFolders = new List<string>(paths);
+            _totalFilesScanned = 0;
+
             _currentStatus.IsScanning = true;
             _currentStatus.CurrentActivity = "Starting scan...";
             _currentStatus.Progress = 0;
@@ -301,6 +332,9 @@ namespace VDF.Web.Server.Services {
             _currentStatus.TotalFiles = e.MaxPosition;
             _currentStatus.Elapsed = e.Elapsed;
             _currentStatus.Remaining = e.Remaining;
+
+            // Track total files scanned for history
+            _totalFilesScanned = Math.Max(_totalFilesScanned, e.MaxPosition);
 
             // Add to recent files with current phase status
             var status = _currentStatus.Phase switch {
@@ -333,11 +367,46 @@ namespace VDF.Web.Server.Services {
             // Cache all thumbnails to persistent storage
             CacheThumbnails();
 
+            // Save scan history if enabled
+            SaveScanHistoryIfEnabled();
+
             _currentStatus.IsScanning = false;
             _currentStatus.CurrentActivity = "Scan Finished";
             _currentStatus.Progress = 100;
             _currentStatus.Phase = ScanPhase.Finished;
             _currentStatus.PhaseDescription = "Finished";
+        }
+
+        /// <summary>
+        /// Saves the scan results to history if history is enabled.
+        /// </summary>
+        private void SaveScanHistoryIfEnabled() {
+            var settings = VDF.GUI.Data.SettingsFile.Instance;
+            if (!settings.EnableScanHistory) return;
+
+            try {
+                var duplicates = Engine.Duplicates.ToList();
+                if (duplicates.Count == 0) {
+                    Logger.Instance.Info("No duplicates found, not saving to history");
+                    return;
+                }
+
+                var historyManager = GetHistoryManager();
+                var scanDuration = DateTime.UtcNow - _scanStartTime;
+                var scanId = historyManager.SaveScanHistory(
+                    duplicates,
+                    _scanFolders,
+                    scanDuration,
+                    _totalFilesScanned,
+                    settings.SaveThumbnailsInHistory);
+
+                if (scanId != null) {
+                    Logger.Instance.Info($"Saved scan history with ID: {scanId}{(settings.SaveThumbnailsInHistory ? " (with thumbnails)" : "")}");
+                }
+            }
+            catch (Exception ex) {
+                Logger.Instance.Info($"Failed to save scan history: {ex.Message}");
+            }
         }
 
         /// <summary>

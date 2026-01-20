@@ -35,6 +35,84 @@ namespace VDF.GUI.ViewModels {
 #pragma warning restore CA1822 // Mark members as static
 			Enum.GetValues<Core.FFTools.FFHardwareAccelerationMode>();
 
+		/// <summary>
+		/// Gets all available delete actions for UI binding.
+		/// </summary>
+		public IEnumerable<Core.Trash.DeleteAction> DeleteActions =>
+			Enum.GetValues<Core.Trash.DeleteAction>();
+
+		/// <summary>
+		/// Command to browse and select data folder (unified data root).
+		/// </summary>
+		public ReactiveCommand<Unit, Unit> BrowseDataFolderCommand => ReactiveCommand.CreateFromTask(async () => {
+			var result = await Utils.PickerDialogUtils.OpenDialogPicker(
+				new FolderPickerOpenOptions() {
+					AllowMultiple = false,
+					Title = "Select Data Folder"
+				});
+
+			if (result != null && result.Count > 0) {
+				SettingsFile.Instance.DataFolder = result[0];
+				// Reset managers to pick up new paths
+				ResetManagers();
+			}
+		});
+
+		/// <summary>
+		/// Command to reset data folder to default (VDF installation directory).
+		/// </summary>
+		public ReactiveCommand<Unit, Unit> ResetDataFolderCommand => ReactiveCommand.Create(() => {
+			SettingsFile.Instance.DataFolder = string.Empty;
+			// Reset managers to pick up new paths
+			ResetManagers();
+		});
+
+		/// <summary>
+		/// Command to browse and select trash folder.
+		/// </summary>
+		public ReactiveCommand<Unit, Unit> BrowseTrashFolderCommand => ReactiveCommand.CreateFromTask(async () => {
+			var result = await Utils.PickerDialogUtils.OpenDialogPicker(
+				new FolderPickerOpenOptions() {
+					AllowMultiple = false,
+					Title = "Select Trash Folder"
+				});
+
+			if (result != null && result.Count > 0) {
+				SettingsFile.Instance.TrashFolderPath = result[0];
+				SettingsFile.Instance.TrashFolderRelativeToScan = false;
+			}
+		});
+
+		/// <summary>
+		/// Command to browse and select history folder.
+		/// </summary>
+		public ReactiveCommand<Unit, Unit> BrowseHistoryFolderCommand => ReactiveCommand.CreateFromTask(async () => {
+			var result = await Utils.PickerDialogUtils.OpenDialogPicker(
+				new FolderPickerOpenOptions() {
+					AllowMultiple = false,
+					Title = "Select History Folder"
+				});
+
+			if (result != null && result.Count > 0) {
+				SettingsFile.Instance.HistoryFolderPath = result[0];
+			}
+		});
+
+		/// <summary>
+		/// Command to reset trash folder to default.
+		/// </summary>
+		public ReactiveCommand<Unit, Unit> ResetTrashFolderCommand => ReactiveCommand.Create(() => {
+			SettingsFile.Instance.TrashFolderPath = ".trash";
+			SettingsFile.Instance.TrashFolderRelativeToScan = true;
+		});
+
+		/// <summary>
+		/// Command to reset history folder to default.
+		/// </summary>
+		public ReactiveCommand<Unit, Unit> ResetHistoryFolderCommand => ReactiveCommand.Create(() => {
+			SettingsFile.Instance.HistoryFolderPath = "history";
+		});
+
 		static readonly List<string> _CustomCommandList = typeof(SettingsFile.CustomActionCommands).GetProperties(BindingFlags.Public | BindingFlags.Instance).Select(p => p.Name).ToList();
 		public List<string> CustomCommandList => _CustomCommandList;
 		PropertyInfo _SelectedCustomCommand = typeof(SettingsFile.CustomActionCommands).GetProperty(_CustomCommandList[0])!;

@@ -24,18 +24,18 @@ namespace VDF.Core.Utils {
 		internal static int DbVersion => DbWrapper.Version;
 		static DatabaseWrapper DbWrapper = new();
 		internal static string? CustomDatabaseFolder;
-		
+		internal static string? DataFolder;
 
-		static string CurrentDatabasePath => Directory.Exists(CustomDatabaseFolder)
-					? FileUtils.SafePathCombine(CustomDatabaseFolder,
-					"ScannedFiles.db")
-					: FileUtils.SafePathCombine(CoreUtils.CurrentFolder,
-					"ScannedFiles.db");
-		static string TempDatabasePath => Directory.Exists(CustomDatabaseFolder)
-					? FileUtils.SafePathCombine(CustomDatabaseFolder,
-					"ScannedFiles_new.db")
-					: FileUtils.SafePathCombine(CoreUtils.CurrentFolder,
-					"ScannedFiles_new.db");
+		static string GetDatabaseFolder() {
+			var folder = DataPaths.GetDatabaseFolder(CustomDatabaseFolder ?? string.Empty, DataFolder ?? string.Empty);
+			if (!Directory.Exists(folder)) {
+				Directory.CreateDirectory(folder);
+			}
+			return folder;
+		}
+
+		static string CurrentDatabasePath => FileUtils.SafePathCombine(GetDatabaseFolder(), "ScannedFiles.db");
+		static string TempDatabasePath => FileUtils.SafePathCombine(GetDatabaseFolder(), "ScannedFiles_new.db");
 
 		internal static bool LoadDatabase() {
 			FileInfo databaseFile = new(TempDatabasePath);

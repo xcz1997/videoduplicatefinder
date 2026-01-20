@@ -112,6 +112,24 @@
                                     </Canvas>
                                 </Viewbox>
                             </RadioButton>
+                            <!-- Separator -->
+                            <Border Height="1" Margin="8,8,8,8" Background="#4D4D4D"/>
+                            <RadioButton x:Name="RadioNavTrash" GroupName="MainNav" Classes="vs-activity-radio"
+                                         ToolTip.Tip="Trash">
+                                <Viewbox Width="24" Height="24">
+                                    <Canvas Width="24" Height="24">
+                                        <Path Data="M9,3V4H4V6H5V19A2,2 0 0,0 7,21H17A2,2 0 0,0 19,19V6H20V4H15V3H9M7,6H17V19H7V6M9,8V17H11V8H9M13,8V17H15V8H13Z" Fill="#858585"/>
+                                    </Canvas>
+                                </Viewbox>
+                            </RadioButton>
+                            <RadioButton x:Name="RadioNavHistory" GroupName="MainNav" Classes="vs-activity-radio"
+                                         ToolTip.Tip="History">
+                                <Viewbox Width="24" Height="24">
+                                    <Canvas Width="24" Height="24">
+                                        <Path Data="M13.5,8H12V13L16.28,15.54L17,14.33L13.5,12.25V8M13,3A9,9 0 0,0 4,12H1L4.96,16.03L9,12H6A7,7 0 0,1 13,5A7,7 0 0,1 20,12A7,7 0 0,1 13,19C11.07,19 9.32,18.21 8.06,16.94L6.64,18.36C8.27,20 10.5,21 13,21A9,9 0 0,0 22,12A9,9 0 0,0 13,3Z" Fill="#858585"/>
+                                    </Canvas>
+                                </Viewbox>
+                            </RadioButton>
                         </StackPanel>
                         <StackPanel Grid.Row="1" VerticalAlignment="Bottom" Margin="0,0,0,8">
                             <Button Classes="vs-activity-btn" Command="{Binding OpenGithubCommand}"
@@ -1699,6 +1717,115 @@
                                             Text="{Binding Source={x:Static local:App.Lang}, Path=[Settings.RestartHint]}" />
                                     </StackPanel>
                                 </TabItem>
+                                <!-- Delete Policy & History Settings Tab -->
+                                <TabItem x:Name="TabItemSettingsDeletePolicy">
+                                    <TabItem.Header>
+                                        <TextBlock
+                                            VerticalAlignment="Center"
+                                            FontSize="12"
+                                            Text="Delete &amp; History" />
+                                    </TabItem.Header>
+                                    <ScrollViewer>
+                                        <StackPanel Margin="10" Spacing="20">
+                                            <!-- Delete Policy Section -->
+                                            <Border BorderBrush="{DynamicResource SystemControlBackgroundChromeMediumBrush}" BorderThickness="1" CornerRadius="4" Padding="15">
+                                                <StackPanel Spacing="10">
+                                                    <TextBlock FontWeight="Bold" FontSize="14" Text="Delete Policy" />
+                                                    <TextBlock
+                                                        Foreground="{DynamicResource ControlBackgroundBrushSolidWarning}"
+                                                        Text="Configure how deleted files are handled." TextWrapping="Wrap" />
+
+                                                    <!-- Delete Action -->
+                                                    <StackPanel Orientation="Horizontal" Spacing="10">
+                                                        <TextBlock VerticalAlignment="Center" Text="Delete Action:" Width="150" />
+                                                        <ComboBox
+                                                            Width="200"
+                                                            ItemsSource="{Binding DeleteActions}"
+                                                            SelectedItem="{Binding Source={x:Static Settings:SettingsFile.Instance}, Path=DefaultDeleteAction}"
+                                                            ToolTip.Tip="MoveToTrash: Files are moved to a trash folder and can be restored. PermanentDelete: Files are deleted immediately." />
+                                                    </StackPanel>
+
+                                                    <!-- Trash Folder Path -->
+                                                    <StackPanel Orientation="Horizontal" Spacing="10">
+                                                        <TextBlock VerticalAlignment="Center" Text="Trash Folder:" Width="150" />
+                                                        <TextBox
+                                                            Width="300"
+                                                            Text="{Binding Source={x:Static Settings:SettingsFile.Instance}, Path=TrashFolderPath}"
+                                                            ToolTip.Tip="Path to the trash folder. Use '.trash' for relative path within scan directory." />
+                                                        <Button Content="Browse..." Command="{Binding BrowseTrashFolderCommand}" Width="80" />
+                                                        <Button Content="Reset" Command="{Binding ResetTrashFolderCommand}" Width="60" />
+                                                    </StackPanel>
+
+                                                    <!-- Trash Folder Options -->
+                                                    <CheckBox
+                                                        IsChecked="{Binding Source={x:Static Settings:SettingsFile.Instance}, Path=TrashFolderRelativeToScan}"
+                                                        Content="Trash folder relative to scan directory"
+                                                        ToolTip.Tip="When enabled, the trash folder is created relative to the scanned directory. When disabled, an absolute path is used." />
+
+                                                    <CheckBox
+                                                        IsChecked="{Binding Source={x:Static Settings:SettingsFile.Instance}, Path=AutoExcludeTrashFolder}"
+                                                        Content="Automatically exclude trash folder from scans"
+                                                        ToolTip.Tip="When enabled, the trash folder is automatically added to the exclusion list during scans." />
+
+                                                    <!-- Trash Retention -->
+                                                    <StackPanel Orientation="Horizontal" Spacing="10">
+                                                        <TextBlock VerticalAlignment="Center" Text="Trash Retention (days):" Width="150" />
+                                                        <NumericUpDown
+                                                            Width="100"
+                                                            Minimum="1"
+                                                            Maximum="365"
+                                                            Value="{Binding Source={x:Static Settings:SettingsFile.Instance}, Path=TrashRetentionDays}"
+                                                            ToolTip.Tip="Number of days to keep files in trash before automatic cleanup." />
+                                                    </StackPanel>
+                                                </StackPanel>
+                                            </Border>
+
+                                            <!-- History Settings Section -->
+                                            <Border BorderBrush="{DynamicResource SystemControlBackgroundChromeMediumBrush}" BorderThickness="1" CornerRadius="4" Padding="15">
+                                                <StackPanel Spacing="10">
+                                                    <TextBlock FontWeight="Bold" FontSize="14" Text="Scan History" />
+                                                    <TextBlock
+                                                        Foreground="{DynamicResource ControlBackgroundBrushSolidWarning}"
+                                                        Text="Configure automatic scan history tracking." TextWrapping="Wrap" />
+
+                                                    <!-- Enable History -->
+                                                    <CheckBox
+                                                        IsChecked="{Binding Source={x:Static Settings:SettingsFile.Instance}, Path=EnableScanHistory}"
+                                                        Content="Enable scan history"
+                                                        ToolTip.Tip="When enabled, scan results and deletion records are automatically saved." />
+
+                                                    <!-- History Folder Path -->
+                                                    <StackPanel Orientation="Horizontal" Spacing="10">
+                                                        <TextBlock VerticalAlignment="Center" Text="History Folder:" Width="150" />
+                                                        <TextBox
+                                                            Width="300"
+                                                            Text="{Binding Source={x:Static Settings:SettingsFile.Instance}, Path=HistoryFolderPath}"
+                                                            ToolTip.Tip="Path to the history folder where scan records are stored." />
+                                                        <Button Content="Browse..." Command="{Binding BrowseHistoryFolderCommand}" Width="80" />
+                                                        <Button Content="Reset" Command="{Binding ResetHistoryFolderCommand}" Width="60" />
+                                                    </StackPanel>
+
+                                                    <!-- History Retention -->
+                                                    <StackPanel Orientation="Horizontal" Spacing="10">
+                                                        <TextBlock VerticalAlignment="Center" Text="History Retention (days):" Width="150" />
+                                                        <NumericUpDown
+                                                            Width="100"
+                                                            Minimum="1"
+                                                            Maximum="365"
+                                                            Value="{Binding Source={x:Static Settings:SettingsFile.Instance}, Path=MaxHistoryDays}"
+                                                            ToolTip.Tip="Number of days to keep scan history before automatic cleanup." />
+                                                    </StackPanel>
+
+                                                    <!-- Save Thumbnails in History -->
+                                                    <CheckBox
+                                                        IsChecked="{Binding Source={x:Static Settings:SettingsFile.Instance}, Path=SaveThumbnailsInHistory}"
+                                                        Content="Save thumbnails in history (increases storage usage)"
+                                                        ToolTip.Tip="When enabled, thumbnails are saved with scan history for preview. This increases storage usage." />
+                                                </StackPanel>
+                                            </Border>
+                                        </StackPanel>
+                                    </ScrollViewer>
+                                </TabItem>
                             </TabControl>
                         </Grid>
                     </TabItem>
@@ -1753,6 +1880,194 @@
                                 Margin="5"
                                 ItemsSource="{Binding LogItems}"
                                 ScrollViewer.HorizontalScrollBarVisibility="Visible" />
+                        </Grid>
+                    </TabItem>
+
+                    <!-- Trash View -->
+                    <TabItem Name="TabItemTrash">
+                        <TabItem.Header>
+                            <TextBlock
+                                VerticalAlignment="Center"
+                                FontSize="12"
+                                Text="Trash" />
+                        </TabItem.Header>
+                        <Grid Margin="10" RowDefinitions="Auto, *, Auto">
+                            <!-- Toolbar -->
+                            <Menu Grid.Row="0" MinHeight="30">
+                                <MenuItem Command="{Binding RefreshTrashCommand}">
+                                    <MenuItem.Header>
+                                        <StackPanel Orientation="Horizontal">
+                                            <Viewbox Width="16" Height="16">
+                                                <Canvas Width="24" Height="24">
+                                                    <Path Data="M17.65,6.35C16.2,4.9 14.21,4 12,4A8,8 0 0,0 4,12A8,8 0 0,0 12,20C15.73,20 18.84,17.45 19.73,14H17.65C16.83,16.33 14.61,18 12,18A6,6 0 0,1 6,12A6,6 0 0,1 12,6C13.66,6 15.14,6.69 16.22,7.78L13,11H20V4L17.65,6.35Z" Fill="{DynamicResource ButtonForegroundBrush}" />
+                                                </Canvas>
+                                            </Viewbox>
+                                            <TextBlock Margin="5,0,0,0" VerticalAlignment="Center" Text="Refresh" />
+                                        </StackPanel>
+                                    </MenuItem.Header>
+                                </MenuItem>
+                                <MenuItem Command="{Binding RestoreSelectedTrashCommand}" IsEnabled="{Binding HasSelectedTrashItems}">
+                                    <MenuItem.Header>
+                                        <StackPanel Orientation="Horizontal">
+                                            <Viewbox Width="16" Height="16">
+                                                <Canvas Width="24" Height="24">
+                                                    <Path Data="M12.5,8C9.85,8 7.45,9 5.6,10.6L2,7V16H11L7.38,12.38C8.77,11.22 10.54,10.5 12.5,10.5C16.04,10.5 19.05,12.81 20.1,16L22.47,15.22C21.08,11.03 17.15,8 12.5,8Z" Fill="Green" />
+                                                </Canvas>
+                                            </Viewbox>
+                                            <TextBlock Margin="5,0,0,0" VerticalAlignment="Center" Text="Restore Selected" />
+                                        </StackPanel>
+                                    </MenuItem.Header>
+                                </MenuItem>
+                                <MenuItem Command="{Binding DeleteSelectedTrashPermanentlyCommand}" IsEnabled="{Binding HasSelectedTrashItems}">
+                                    <MenuItem.Header>
+                                        <StackPanel Orientation="Horizontal">
+                                            <Viewbox Width="16" Height="16">
+                                                <Canvas Width="24" Height="24">
+                                                    <Path Data="M9,3V4H4V6H5V19A2,2 0 0,0 7,21H17A2,2 0 0,0 19,19V6H20V4H15V3H9M7,6H17V19H7V6M9,8V17H11V8H9M13,8V17H15V8H13Z" Fill="Red" />
+                                                </Canvas>
+                                            </Viewbox>
+                                            <TextBlock Margin="5,0,0,0" VerticalAlignment="Center" Text="Delete Permanently" />
+                                        </StackPanel>
+                                    </MenuItem.Header>
+                                </MenuItem>
+                                <Separator Width="1" Margin="5,5,5,5" Background="{DynamicResource SystemControlBackgroundChromeMediumBrush}" />
+                                <MenuItem Command="{Binding EmptyTrashCommand}">
+                                    <MenuItem.Header>
+                                        <StackPanel Orientation="Horizontal">
+                                            <Viewbox Width="16" Height="16">
+                                                <Canvas Width="24" Height="24">
+                                                    <Path Data="M19,4H15.5L14.5,3H9.5L8.5,4H5V6H19M6,19A2,2 0 0,0 8,21H16A2,2 0 0,0 18,19V7H6V19Z" Fill="Orange" />
+                                                </Canvas>
+                                            </Viewbox>
+                                            <TextBlock Margin="5,0,0,0" VerticalAlignment="Center" Text="Empty Trash" />
+                                        </StackPanel>
+                                    </MenuItem.Header>
+                                </MenuItem>
+                            </Menu>
+
+                            <!-- Trash Items Grid -->
+                            <DataGrid Grid.Row="1" Name="TrashDataGrid"
+                                      ItemsSource="{Binding TrashItems}"
+                                      SelectedItem="{Binding SelectedTrashItem}"
+                                      SelectionMode="Extended"
+                                      CanUserResizeColumns="True"
+                                      CanUserReorderColumns="True"
+                                      IsReadOnly="True"
+                                      GridLinesVisibility="Horizontal"
+                                      BorderThickness="1"
+                                      BorderBrush="{DynamicResource SystemControlBackgroundChromeMediumBrush}">
+                                <DataGrid.Columns>
+                                    <DataGridTextColumn Header="File Name" Binding="{Binding FileName}" Width="200" />
+                                    <DataGridTextColumn Header="Original Path" Binding="{Binding OriginalPath}" Width="*" />
+                                    <DataGridTextColumn Header="Size" Binding="{Binding SizeDisplay}" Width="100" />
+                                    <DataGridTextColumn Header="Deleted" Binding="{Binding DeletedAgo}" Width="120" />
+                                    <DataGridCheckBoxColumn Header="Available" Binding="{Binding FileExists}" Width="80" />
+                                </DataGrid.Columns>
+                            </DataGrid>
+
+                            <!-- Status Bar -->
+                            <Border Grid.Row="2" Background="{DynamicResource SystemControlBackgroundChromeMediumLowBrush}" Padding="10,5">
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Text="Items: " />
+                                    <TextBlock Text="{Binding TrashItemCount}" FontWeight="Bold" />
+                                    <TextBlock Text="  |  Total Size: " Margin="20,0,0,0" />
+                                    <TextBlock Text="{Binding TrashTotalSize}" FontWeight="Bold" />
+                                </StackPanel>
+                            </Border>
+                        </Grid>
+                    </TabItem>
+
+                    <!-- History View -->
+                    <TabItem Name="TabItemHistory">
+                        <TabItem.Header>
+                            <TextBlock
+                                VerticalAlignment="Center"
+                                FontSize="12"
+                                Text="History" />
+                        </TabItem.Header>
+                        <Grid Margin="10" RowDefinitions="Auto, *, Auto">
+                            <!-- Toolbar -->
+                            <Menu Grid.Row="0" MinHeight="30">
+                                <MenuItem Command="{Binding RefreshHistoryCommand}">
+                                    <MenuItem.Header>
+                                        <StackPanel Orientation="Horizontal">
+                                            <Viewbox Width="16" Height="16">
+                                                <Canvas Width="24" Height="24">
+                                                    <Path Data="M17.65,6.35C16.2,4.9 14.21,4 12,4A8,8 0 0,0 4,12A8,8 0 0,0 12,20C15.73,20 18.84,17.45 19.73,14H17.65C16.83,16.33 14.61,18 12,18A6,6 0 0,1 6,12A6,6 0 0,1 12,6C13.66,6 15.14,6.69 16.22,7.78L13,11H20V4L17.65,6.35Z" Fill="{DynamicResource ButtonForegroundBrush}" />
+                                                </Canvas>
+                                            </Viewbox>
+                                            <TextBlock Margin="5,0,0,0" VerticalAlignment="Center" Text="Refresh" />
+                                        </StackPanel>
+                                    </MenuItem.Header>
+                                </MenuItem>
+                                <MenuItem Command="{Binding ViewHistoryDetailsCommand}" IsEnabled="{Binding HasSelectedHistoryEntry}">
+                                    <MenuItem.Header>
+                                        <StackPanel Orientation="Horizontal">
+                                            <Viewbox Width="16" Height="16">
+                                                <Canvas Width="24" Height="24">
+                                                    <Path Data="M12,9A3,3 0 0,0 9,12A3,3 0 0,0 12,15A3,3 0 0,0 15,12A3,3 0 0,0 12,9M12,17A5,5 0 0,1 7,12A5,5 0 0,1 12,7A5,5 0 0,1 17,12A5,5 0 0,1 12,17M12,4.5C7,4.5 2.73,7.61 1,12C2.73,16.39 7,19.5 12,19.5C17,19.5 21.27,16.39 23,12C21.27,7.61 17,4.5 12,4.5Z" Fill="{DynamicResource ButtonForegroundBrush}" />
+                                                </Canvas>
+                                            </Viewbox>
+                                            <TextBlock Margin="5,0,0,0" VerticalAlignment="Center" Text="View Details" />
+                                        </StackPanel>
+                                    </MenuItem.Header>
+                                </MenuItem>
+                                <MenuItem Command="{Binding DeleteSelectedHistoryCommand}" IsEnabled="{Binding HasSelectedHistoryEntry}">
+                                    <MenuItem.Header>
+                                        <StackPanel Orientation="Horizontal">
+                                            <Viewbox Width="16" Height="16">
+                                                <Canvas Width="24" Height="24">
+                                                    <Path Data="M9,3V4H4V6H5V19A2,2 0 0,0 7,21H17A2,2 0 0,0 19,19V6H20V4H15V3H9M7,6H17V19H7V6M9,8V17H11V8H9M13,8V17H15V8H13Z" Fill="Red" />
+                                                </Canvas>
+                                            </Viewbox>
+                                            <TextBlock Margin="5,0,0,0" VerticalAlignment="Center" Text="Delete Entry" />
+                                        </StackPanel>
+                                    </MenuItem.Header>
+                                </MenuItem>
+                                <Separator Width="1" Margin="5,5,5,5" Background="{DynamicResource SystemControlBackgroundChromeMediumBrush}" />
+                                <MenuItem Command="{Binding CleanupHistoryCommand}">
+                                    <MenuItem.Header>
+                                        <StackPanel Orientation="Horizontal">
+                                            <Viewbox Width="16" Height="16">
+                                                <Canvas Width="24" Height="24">
+                                                    <Path Data="M19.36,2.72L20.78,4.14L15.06,9.85C16.13,11.39 16.28,13.24 15.38,14.44L9.06,8.12C10.26,7.22 12.11,7.37 13.65,8.44L19.36,2.72M5.93,17.57C3.92,15.56 2.69,13.16 2.35,10.92L7.23,8.83L14.67,16.27L12.58,21.15C10.34,20.81 7.94,19.58 5.93,17.57Z" Fill="Orange" />
+                                                </Canvas>
+                                            </Viewbox>
+                                            <TextBlock Margin="5,0,0,0" VerticalAlignment="Center" Text="Cleanup Old Entries" />
+                                        </StackPanel>
+                                    </MenuItem.Header>
+                                </MenuItem>
+                            </Menu>
+
+                            <!-- History Items Grid -->
+                            <DataGrid Grid.Row="1" Name="HistoryDataGrid"
+                                      ItemsSource="{Binding HistoryEntries}"
+                                      SelectedItem="{Binding SelectedHistoryEntry}"
+                                      SelectionMode="Single"
+                                      CanUserResizeColumns="True"
+                                      CanUserReorderColumns="True"
+                                      IsReadOnly="True"
+                                      GridLinesVisibility="Horizontal"
+                                      BorderThickness="1"
+                                      BorderBrush="{DynamicResource SystemControlBackgroundChromeMediumBrush}">
+                                <DataGrid.Columns>
+                                    <DataGridTextColumn Header="Scan ID" Binding="{Binding ScanId}" Width="150" />
+                                    <DataGridTextColumn Header="Date" Binding="{Binding TimestampDisplay}" Width="150" />
+                                    <DataGridTextColumn Header="Folders" Binding="{Binding FoldersDisplay}" Width="*" />
+                                    <DataGridTextColumn Header="Duplicates" Binding="{Binding DuplicateItems}" Width="80" />
+                                    <DataGridTextColumn Header="Groups" Binding="{Binding DuplicateGroups}" Width="70" />
+                                    <DataGridTextColumn Header="Size" Binding="{Binding TotalSizeDisplay}" Width="100" />
+                                    <DataGridTextColumn Header="Deleted" Binding="{Binding DeletedCount}" Width="70" />
+                                </DataGrid.Columns>
+                            </DataGrid>
+
+                            <!-- Status Bar -->
+                            <Border Grid.Row="2" Background="{DynamicResource SystemControlBackgroundChromeMediumLowBrush}" Padding="10,5">
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Text="Total Entries: " />
+                                    <TextBlock Text="{Binding HistoryEntryCount}" FontWeight="Bold" />
+                                </StackPanel>
+                            </Border>
                         </Grid>
                     </TabItem>
                 </TabControl>

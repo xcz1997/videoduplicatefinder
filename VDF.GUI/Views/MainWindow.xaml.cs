@@ -177,6 +177,8 @@ namespace VDF.GUI.Views {
 			var radioNavScanner = this.FindControl<RadioButton>("RadioNavScanner");
 			var radioNavSettings = this.FindControl<RadioButton>("RadioNavSettings");
 			var radioNavLog = this.FindControl<RadioButton>("RadioNavLog");
+			var radioNavTrash = this.FindControl<RadioButton>("RadioNavTrash");
+			var radioNavHistory = this.FindControl<RadioButton>("RadioNavHistory");
 
 			if (tabControl == null || radioNavScanner == null || radioNavSettings == null || radioNavLog == null)
 				return;
@@ -193,6 +195,18 @@ namespace VDF.GUI.Views {
 				if (radioNavLog.IsChecked == true)
 					tabControl.SelectedIndex = 2;
 			};
+			if (radioNavTrash != null) {
+				radioNavTrash.IsCheckedChanged += (s, e) => {
+					if (radioNavTrash.IsChecked == true)
+						tabControl.SelectedIndex = 3;
+				};
+			}
+			if (radioNavHistory != null) {
+				radioNavHistory.IsCheckedChanged += (s, e) => {
+					if (radioNavHistory.IsChecked == true)
+						tabControl.SelectedIndex = 4;
+				};
+			}
 		}
 	}
 }

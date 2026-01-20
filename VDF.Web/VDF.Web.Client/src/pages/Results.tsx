@@ -3,7 +3,7 @@ import { Card, Table, Image, Button, Space, Empty, Tag, Tooltip, message, Modal 
 import { useRequest } from 'ahooks';
 import { useTranslation } from 'react-i18next';
 import { scan } from '../api';
-import { FileImageOutlined, VideoCameraOutlined, DeleteOutlined, CheckCircleOutlined, StarFilled, ExclamationCircleOutlined, SaveOutlined, EyeOutlined } from '@ant-design/icons';
+import { FileImageOutlined, VideoCameraOutlined, DeleteOutlined, CheckCircleOutlined, StarFilled, ExclamationCircleOutlined, SaveOutlined, EyeOutlined, HddOutlined } from '@ant-design/icons';
 import ThumbnailPreview from '../components/ThumbnailPreview';
 
 interface DuplicateItem {
@@ -34,6 +34,15 @@ interface DuplicateGroup {
 
 const PAGE_SIZE = 10;
 
+// Format bytes to human-readable format with smart unit conversion
+const formatBytes = (bytes: number): string => {
+  if (bytes === 0) return '0 B';
+  const k = 1024;
+  const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+};
+
 const Results: React.FC = () => {
   const { data, refresh } = useRequest(scan.getResults);
   const { t } = useTranslation();
@@ -48,6 +57,20 @@ const Results: React.FC = () => {
     if (!data || data.length === 0) return [];
     return data.map((g: DuplicateGroup) => g.groupId);
   }, [data]);
+
+  // Calculate selected items total size
+  const selectedTotalSize = useMemo(() => {
+    if (!data || selectedItems.size === 0) return 0;
+    let total = 0;
+    data.forEach((group: DuplicateGroup) => {
+      group.items.forEach((item: DuplicateItem) => {
+        if (selectedItems.has(item.path)) {
+          total += item.sizeLong;
+        }
+      });
+    });
+    return total;
+  }, [data, selectedItems]);
 
   // Calculate best item in a group based on multiple criteria
   const getBestItemInGroup = (items: DuplicateItem[]): string | null => {
@@ -150,10 +173,21 @@ const Results: React.FC = () => {
         setDeleting(true);
         try {
           const result = await scan.deleteFiles(Array.from(selectedItems));
-          message.success(t('Results.DeleteSuccess', {
-            success: result.successCount,
-            fail: result.failCount
-          }));
+          // Show success modal with cleanup summary
+          Modal.success({
+            title: t('Results.DeleteCompleteTitle'),
+            content: (
+              <div>
+                <p>{t('Results.DeleteSuccess', {
+                  success: result.successCount,
+                  fail: result.failCount
+                })}</p>
+                <p style={{ fontSize: '18px', fontWeight: 'bold', color: '#52c41a' }}>
+                  {t('Results.CleanedUpSize', { size: result.totalDeletedSizeFormatted })}
+                </p>
+              </div>
+            ),
+          });
           // Clear selection and refresh
           setSelectedItems(new Set());
           refresh();
@@ -196,7 +230,7 @@ const Results: React.FC = () => {
       key: 'totalSize',
       render: (_: string, record: DuplicateGroup) => {
         const size = record.items.reduce((acc, item) => acc + item.sizeLong, 0);
-        return (size / 1024 / 1024).toFixed(2) + ' MB';
+        return formatBytes(size);
       }
     },
     {
@@ -281,7 +315,7 @@ const Results: React.FC = () => {
             dataIndex: 'sizeLong',
             key: 'size',
             width: 100,
-            render: (v: number) => (v / 1024 / 1024).toFixed(2) + ' MB',
+            render: (v: number) => formatBytes(v),
             sorter: (a: DuplicateItem, b: DuplicateItem) => a.sizeLong - b.sizeLong
           },
           { title: t('DuplicateList.Header.Resolution'), dataIndex: 'frameSize', key: 'res', width: 100 },
@@ -343,7 +377,9 @@ const Results: React.FC = () => {
       extra={
         <Space wrap>
           {selectedItems.size > 0 && (
-            <Tag color="blue">{t('Results.SelectedCount', { count: selectedItems.size })}</Tag>
+            <Tag color="blue" icon={<HddOutlined />}>
+              {t('Results.SelectedCount', { count: selectedItems.size })} ({formatBytes(selectedTotalSize)})
+            </Tag>
           )}
           <Button onClick={handleSelectCurrentPageBest} disabled={!data || data.length === 0}>
             {t('Results.SelectCurrentPageBest')}

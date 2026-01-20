@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Form, InputNumber, Switch, Button, Card, message, Select, List, Typography, Space, Input, Row, Col, Tooltip, Statistic, Checkbox, Alert, Tag } from 'antd';
+import { Form, InputNumber, Switch, Button, Card, message, Select, List, Typography, Space, Input, Row, Col, Tooltip, Checkbox, Alert, Tag } from 'antd';
 import {
   DeleteOutlined,
   PlusOutlined,
@@ -10,11 +10,12 @@ import {
   ControlOutlined,
   ExperimentOutlined,
   ToolOutlined,
-  SaveOutlined,
   ClearOutlined,
   DatabaseOutlined,
   AppstoreOutlined,
-  BulbOutlined
+  BulbOutlined,
+  SafetyOutlined,
+  HistoryOutlined
 } from '@ant-design/icons';
 
 // Media server template definitions
@@ -79,7 +80,7 @@ const MEDIA_TEMPLATES = {
 } as const;
 import { useRequest } from 'ahooks';
 import { useTranslation } from 'react-i18next';
-import { settings, scan, CacheInfo, monitor, HwAccelRecommendation, MonitorMethodInfo } from '../api';
+import { settings, scan, monitor, HwAccelRecommendation, MonitorMethodInfo, DeletePolicySettings, DeleteActionOption, PathsInfoResponse } from '../api';
 import { FolderPicker } from '../components/FolderPicker';
 
 const { Option } = Select;
@@ -134,8 +135,7 @@ const Settings: React.FC = () => {
   const [selectedTemplates, setSelectedTemplates] = useState<string[]>([]);
   const [filePathNotContainsTexts, setFilePathNotContainsTexts] = useState<string[]>([]);
 
-  // Cache info state
-  const [cacheInfo, setCacheInfo] = useState<CacheInfo | null>(null);
+  // Cache operations state
   const [clearingCache, setClearingCache] = useState(false);
 
   // Database operations state
@@ -149,13 +149,24 @@ const Settings: React.FC = () => {
   const [monitorMethods, setMonitorMethods] = useState<MonitorMethodInfo[]>([]);
   const [currentMonitorMethod, setCurrentMonitorMethod] = useState<string>('auto');
 
-  // Load cache info
-  const loadCacheInfo = async () => {
+  // Delete policy settings
+  const [deletePolicy, setDeletePolicy] = useState<DeletePolicySettings | null>(null);
+  const [deleteActions, setDeleteActions] = useState<DeleteActionOption[]>([]);
+
+  // Paths info
+  const [pathsInfo, setPathsInfo] = useState<PathsInfoResponse | null>(null);
+  const [loadingPaths, setLoadingPaths] = useState(false);
+
+  // Load paths info
+  const loadPathsInfo = async () => {
+    setLoadingPaths(true);
     try {
-      const info = await settings.getCacheInfo();
-      setCacheInfo(info);
+      const info = await settings.getPathsInfo();
+      setPathsInfo(info);
     } catch (e) {
-      console.error('Failed to load cache info', e);
+      console.error('Failed to load paths info', e);
+    } finally {
+      setLoadingPaths(false);
     }
   };
 
@@ -180,6 +191,22 @@ const Settings: React.FC = () => {
     }
   };
 
+  // Load delete policy settings
+  const loadDeletePolicy = async () => {
+    try {
+      const [policy, actions] = await Promise.all([
+        settings.getDeletePolicy(),
+        settings.getDeleteActions()
+      ]);
+      setDeletePolicy(policy);
+      setDeleteActions(actions);
+      // Set delete policy values in main form
+      form.setFieldsValue(policy);
+    } catch (e) {
+      console.error('Failed to load delete policy', e);
+    }
+  };
+
   // Handle monitor method change
   const handleMonitorMethodChange = async (method: string) => {
     try {
@@ -192,9 +219,10 @@ const Settings: React.FC = () => {
   };
 
   useEffect(() => {
-    loadCacheInfo();
     loadHwRecommendation();
     loadMonitorMethods();
+    loadDeletePolicy();
+    loadPathsInfo();
   }, []);
 
   const handleClearCache = async () => {
@@ -202,7 +230,7 @@ const Settings: React.FC = () => {
     try {
       await settings.clearCache();
       message.success(t('Settings.CacheClearedSuccess') || 'Thumbnail cache cleared successfully');
-      await loadCacheInfo();
+      await loadPathsInfo();
     } catch (e) {
       message.error(t('Settings.CacheClearedFailed') || 'Failed to clear cache');
     } finally {
@@ -269,9 +297,30 @@ const Settings: React.FC = () => {
     }
   };
 
-  const onFinish = async (values: any) => {
+  // Auto-save debounce ref
+  const saveTimeoutRef = React.useRef<NodeJS.Timeout | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
+
+  // Extract delete policy fields from all values
+  // Note: Use || for string fields to handle empty strings, ?? for other types
+  const extractDeletePolicyFields = (values: any): DeletePolicySettings => ({
+    defaultDeleteAction: values.defaultDeleteAction ?? deletePolicy?.defaultDeleteAction ?? 0,
+    trashFolderPath: values.trashFolderPath || deletePolicy?.trashFolderPath || '.trash',
+    trashFolderRelativeToScan: values.trashFolderRelativeToScan ?? deletePolicy?.trashFolderRelativeToScan ?? true,
+    autoExcludeTrashFolder: values.autoExcludeTrashFolder ?? deletePolicy?.autoExcludeTrashFolder ?? true,
+    trashRetentionDays: values.trashRetentionDays ?? deletePolicy?.trashRetentionDays ?? 30,
+    enableScanHistory: values.enableScanHistory ?? deletePolicy?.enableScanHistory ?? true,
+    maxHistoryDays: values.maxHistoryDays ?? deletePolicy?.maxHistoryDays ?? 90,
+    saveThumbnailsInHistory: values.saveThumbnailsInHistory ?? deletePolicy?.saveThumbnailsInHistory ?? false,
+    historyFolderPath: values.historyFolderPath || deletePolicy?.historyFolderPath || 'history',
+  });
+
+  // Save all settings
+  const saveAllSettings = async (values: any) => {
+    setIsSaving(true);
     try {
-      const toSave = {
+      // Prepare main settings
+      const mainSettings = {
         ...data,
         ...values,
         Includes: includes,
@@ -279,12 +328,45 @@ const Settings: React.FC = () => {
         SelectedMediaTemplates: selectedTemplates,
         FilePathNotContainsTexts: filePathNotContainsTexts
       };
-      await settings.save(toSave);
-      message.success(t('Settings.SaveSuccess') || 'Settings saved successfully');
+
+      // Extract and save delete policy separately
+      const deletePolicyData = extractDeletePolicyFields(values);
+
+      // Save both in parallel
+      await Promise.all([
+        settings.save(mainSettings),
+        settings.updateDeletePolicy(deletePolicyData)
+      ]);
+
+      setDeletePolicy(deletePolicyData);
     } catch (e) {
+      console.error('Failed to save settings', e);
       message.error(t('Settings.SaveFailed') || 'Failed to save settings');
+    } finally {
+      setIsSaving(false);
     }
   };
+
+  // Debounced auto-save on value change
+  const handleValuesChange = (_changedValues: any, allValues: any) => {
+    // Clear previous timeout
+    if (saveTimeoutRef.current) {
+      clearTimeout(saveTimeoutRef.current);
+    }
+    // Set new timeout for debounced save
+    saveTimeoutRef.current = setTimeout(() => {
+      saveAllSettings(allValues);
+    }, 500); // 500ms debounce
+  };
+
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (saveTimeoutRef.current) {
+        clearTimeout(saveTimeoutRef.current);
+      }
+    };
+  }, []);
 
   const removeItem = (list: string[], setList: (v: string[]) => void, item: string) => {
     setList(list.filter(i => i !== item));
@@ -311,7 +393,7 @@ const Settings: React.FC = () => {
       <Form
         form={form}
         layout="vertical"
-        onFinish={onFinish}
+        onValuesChange={handleValuesChange}
         initialValues={{
           Percent: 95,
           Thumbnails: 2,
@@ -725,7 +807,124 @@ const Settings: React.FC = () => {
             </div>
           </Card>
 
-          {/* Custom Settings Card */}
+          {/* Path Management Card */}
+          <Card
+            className="settings-card"
+            title={<CardTitle icon={<FolderOutlined />} iconClass="custom" title={t('Settings.PathManagement') || 'Path Management'} />}
+            loading={loading || loadingPaths}
+          >
+            <Alert
+              message={t('Settings.DataFolderInfo') || 'Unified data storage location'}
+              description={t('Settings.DataFolderDesc') || 'All data paths (database, cache, history) default to subdirectories under this folder. Each can be overridden individually.'}
+              type="info"
+              showIcon
+              style={{ marginBottom: 24 }}
+            />
+
+            {/* Data Folder - Root */}
+            <div className="path-item" style={{ marginBottom: 20, padding: 16, background: 'var(--bg-secondary)', borderRadius: 8 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                <Text strong style={{ fontSize: 14 }}>{t('Settings.DataFolder') || 'Data Folder'}</Text>
+                <Tag color="blue">{pathsInfo?.dataFolder?.sizeFormatted || '0 B'}</Tag>
+              </div>
+              <Form.Item
+                name="DataFolder"
+                noStyle
+              >
+                <Input
+                  placeholder={pathsInfo?.dataFolder?.resolvedPath || t('Settings.DataFolderPlaceholder') || 'Leave empty for default location'}
+                  suffix={<Tooltip title={t('Settings.DataFolderTooltip')}><QuestionCircleOutlined style={{ color: '#999' }} /></Tooltip>}
+                />
+              </Form.Item>
+              <Text type="secondary" style={{ fontSize: 12, marginTop: 4, display: 'block' }}>
+                {t('Settings.CurrentPath') || 'Current'}: {pathsInfo?.dataFolder?.resolvedPath || '-'}
+              </Text>
+            </div>
+
+            {/* Database Folder */}
+            <div className="path-item" style={{ marginBottom: 20, padding: 16, background: 'var(--bg-secondary)', borderRadius: 8 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                <Text strong style={{ fontSize: 14 }}>{t('Settings.DatabaseFolder') || 'Database Folder'}</Text>
+                <Tag color="purple">{pathsInfo?.databaseFolder?.sizeFormatted || '0 B'}</Tag>
+              </div>
+              <Form.Item
+                name="CustomDatabaseFolder"
+                noStyle
+              >
+                <Input
+                  placeholder={pathsInfo?.databaseFolder?.resolvedPath || t('Settings.DefaultLocation') || 'Leave empty for default location'}
+                  suffix={<Tooltip title={t('ToolTip.Settings.CustomDbFolder')}><QuestionCircleOutlined style={{ color: '#999' }} /></Tooltip>}
+                />
+              </Form.Item>
+              <Text type="secondary" style={{ fontSize: 12, marginTop: 4, display: 'block' }}>
+                {t('Settings.CurrentPath') || 'Current'}: {pathsInfo?.databaseFolder?.resolvedPath || '-'}
+              </Text>
+            </div>
+
+            {/* Cache Folder */}
+            <div className="path-item" style={{ marginBottom: 20, padding: 16, background: 'var(--bg-secondary)', borderRadius: 8 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                <Text strong style={{ fontSize: 14 }}>{t('Settings.CacheFolder') || 'Cache Folder'}</Text>
+                <Space>
+                  <Tag color="cyan">{pathsInfo?.cacheFolder?.sizeFormatted || '0 B'}</Tag>
+                  <Button
+                    size="small"
+                    danger
+                    icon={<ClearOutlined />}
+                    onClick={handleClearCache}
+                    loading={clearingCache}
+                  >
+                    {t('Settings.Clear') || 'Clear'}
+                  </Button>
+                </Space>
+              </div>
+              <Form.Item
+                name="ThumbnailCacheFolder"
+                noStyle
+              >
+                <Input
+                  placeholder={pathsInfo?.cacheFolder?.resolvedPath || t('Settings.DefaultLocation') || 'Leave empty for default location'}
+                  suffix={<Tooltip title={t('ToolTip.Settings.ThumbnailCacheFolder')}><QuestionCircleOutlined style={{ color: '#999' }} /></Tooltip>}
+                />
+              </Form.Item>
+              <Text type="secondary" style={{ fontSize: 12, marginTop: 4, display: 'block' }}>
+                {t('Settings.CurrentPath') || 'Current'}: {pathsInfo?.cacheFolder?.resolvedPath || '-'}
+              </Text>
+            </div>
+
+            {/* History Folder */}
+            <div className="path-item" style={{ marginBottom: 20, padding: 16, background: 'var(--bg-secondary)', borderRadius: 8 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                <Text strong style={{ fontSize: 14 }}>{t('Settings.HistoryFolder') || 'History Folder'}</Text>
+                <Tag color="orange">{pathsInfo?.historyFolder?.sizeFormatted || '0 B'}</Tag>
+              </div>
+              <Form.Item
+                name="HistoryFolderPath"
+                noStyle
+              >
+                <Input
+                  placeholder={pathsInfo?.historyFolder?.resolvedPath || t('Settings.DefaultLocation') || 'Leave empty for default location'}
+                  suffix={<Tooltip title={t('Settings.HistoryFolderTooltip')}><QuestionCircleOutlined style={{ color: '#999' }} /></Tooltip>}
+                />
+              </Form.Item>
+              <Text type="secondary" style={{ fontSize: 12, marginTop: 4, display: 'block' }}>
+                {t('Settings.CurrentPath') || 'Current'}: {pathsInfo?.historyFolder?.resolvedPath || '-'}
+              </Text>
+            </div>
+
+            {/* Refresh button */}
+            <div style={{ textAlign: 'right' }}>
+              <Button
+                icon={<DatabaseOutlined />}
+                onClick={() => loadPathsInfo()}
+                loading={loadingPaths}
+              >
+                {t('Settings.RefreshPathInfo') || 'Refresh'}
+              </Button>
+            </div>
+          </Card>
+
+          {/* Custom FF Arguments Card */}
           <Card
             className="settings-card"
             title={<CardTitle icon={<ToolOutlined />} iconClass="custom" title={t('Settings.Custom') || 'Custom'} />}
@@ -737,52 +936,6 @@ const Settings: React.FC = () => {
             >
               <Input placeholder="e.g. -hwaccel cuda" />
             </Form.Item>
-
-            <Form.Item
-              label={<LabelWithTooltip label={t('Settings.CustomDbFolder')} tooltip={t('ToolTip.Settings.CustomDbFolder')} />}
-              name="CustomDatabaseFolder"
-            >
-              <Input placeholder={t('Settings.DefaultLocation') || 'Leave empty for default location'} />
-            </Form.Item>
-          </Card>
-
-          {/* Thumbnail Cache Card */}
-          <Card
-            className="settings-card"
-            title={<CardTitle icon={<DatabaseOutlined />} iconClass="cache" title={t('Settings.ThumbnailCache') || 'Thumbnail Cache'} />}
-            loading={loading}
-          >
-            <Form.Item
-              label={<LabelWithTooltip label={t('Settings.ThumbnailCacheFolder')} tooltip={t('ToolTip.Settings.ThumbnailCacheFolder')} />}
-              name="ThumbnailCacheFolder"
-            >
-              <Input placeholder={cacheInfo?.defaultCacheFolder || t('Settings.DefaultLocation') || 'Leave empty for default location'} />
-            </Form.Item>
-
-            <div style={{ marginBottom: 16 }}>
-              <Space size="large">
-                <Statistic
-                  title={t('Settings.CacheSize') || 'Cache Size'}
-                  value={cacheInfo?.cacheSizeFormatted || '0 B'}
-                  prefix={<DatabaseOutlined />}
-                />
-                <Button
-                  type="primary"
-                  danger
-                  icon={<ClearOutlined />}
-                  onClick={handleClearCache}
-                  loading={clearingCache}
-                >
-                  {t('Settings.ClearThumbnailCache') || 'Clear Cache'}
-                </Button>
-              </Space>
-            </div>
-
-            {cacheInfo && (
-              <Text type="secondary" style={{ display: 'block', fontSize: 12 }}>
-                {t('Settings.CacheLocation') || 'Cache Location'}: {cacheInfo.cacheFolder}
-              </Text>
-            )}
           </Card>
 
           {/* Database Management Card */}
@@ -821,20 +974,152 @@ const Settings: React.FC = () => {
               </Text>
             </div>
           </Card>
+
+          {/* Delete Policy Card */}
+          <Card
+            className="settings-card"
+            title={<CardTitle icon={<SafetyOutlined />} iconClass="safety" title={t('Settings.DeletePolicy') || 'Delete Policy'} />}
+            loading={loading || !deletePolicy}
+          >
+            <Alert
+              message={t('Settings.DeletePolicyInfo') || 'Configure how deleted files are handled'}
+              description={t('Settings.DeletePolicyDesc') || 'Files can be moved to a trash folder for recovery, or permanently deleted.'}
+              type="info"
+              showIcon
+              style={{ marginBottom: 16 }}
+            />
+
+            <Row gutter={[20, 16]}>
+              <Col xs={24} sm={12}>
+                <Form.Item
+                  label={<LabelWithTooltip label={t('Settings.DeleteAction') || 'Delete Action'} tooltip={t('Settings.DeleteActionTooltip') || 'Choose how files are deleted'} />}
+                  name="defaultDeleteAction"
+                >
+                  <Select>
+                    {deleteActions.map(action => (
+                      <Option key={action.value} value={action.value}>
+                        <Tooltip title={action.description}>
+                          {action.name}
+                        </Tooltip>
+                      </Option>
+                    ))}
+                  </Select>
+                </Form.Item>
+              </Col>
+              <Col xs={24} sm={12}>
+                <Form.Item
+                  label={<LabelWithTooltip label={t('Settings.TrashRetention') || 'Trash Retention (days)'} tooltip={t('Settings.TrashRetentionTooltip') || 'Number of days to keep files in trash'} />}
+                  name="trashRetentionDays"
+                >
+                  <InputNumber min={1} max={365} style={{ width: '100%' }} />
+                </Form.Item>
+              </Col>
+            </Row>
+
+            {/* Trash Folder */}
+            <div className="path-item" style={{ marginBottom: 20, padding: 16, background: 'var(--bg-secondary)', borderRadius: 8 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                <Text strong style={{ fontSize: 14 }}>{t('Settings.TrashFolder') || 'Trash Folder'}</Text>
+                <Tag color="red">{pathsInfo?.trashFolder?.sizeFormatted || '0 B'}</Tag>
+              </div>
+              <Form.Item
+                name="trashFolderPath"
+                noStyle
+              >
+                <Input
+                  placeholder=".trash"
+                  suffix={<Tooltip title={t('Settings.TrashFolderTooltip') || 'Path to the trash folder'}><QuestionCircleOutlined style={{ color: '#999' }} /></Tooltip>}
+                />
+              </Form.Item>
+              <Text type="secondary" style={{ fontSize: 12, marginTop: 4, display: 'block' }}>
+                {t('Settings.CurrentPath') || 'Current'}: {pathsInfo?.trashFolder?.resolvedPath || '-'}
+              </Text>
+            </div>
+
+            <div className="switch-group" style={{ marginBottom: 16 }}>
+              <div className="switch-item">
+                <LabelWithTooltip
+                  label={t('Settings.TrashRelativeToScan') || 'Trash folder relative to scan directory'}
+                  tooltip={t('Settings.TrashRelativeToScanTooltip') || 'When enabled, trash folder is created relative to scanned directory'}
+                />
+                <Form.Item name="trashFolderRelativeToScan" valuePropName="checked" noStyle>
+                  <Switch />
+                </Form.Item>
+              </div>
+              <div className="switch-item">
+                <LabelWithTooltip
+                  label={t('Settings.AutoExcludeTrash') || 'Auto-exclude trash folder from scans'}
+                  tooltip={t('Settings.AutoExcludeTrashTooltip') || 'Automatically add trash folder to exclusion list'}
+                />
+                <Form.Item name="autoExcludeTrashFolder" valuePropName="checked" noStyle>
+                  <Switch />
+                </Form.Item>
+              </div>
+            </div>
+          </Card>
+
+          {/* Scan History Card */}
+          <Card
+            className="settings-card"
+            title={<CardTitle icon={<HistoryOutlined />} iconClass="history" title={t('Settings.ScanHistory') || 'Scan History'} />}
+            loading={loading || !deletePolicy}
+          >
+            <Alert
+              message={t('Settings.ScanHistoryInfo') || 'Automatic scan history tracking'}
+              description={t('Settings.ScanHistoryDesc') || 'Track scan results and deletion records for review and recovery.'}
+              type="info"
+              showIcon
+              style={{ marginBottom: 16 }}
+            />
+
+            <div className="switch-group" style={{ marginBottom: 16 }}>
+              <div className="switch-item">
+                <LabelWithTooltip
+                  label={t('Settings.EnableHistory') || 'Enable scan history'}
+                  tooltip={t('Settings.EnableHistoryTooltip') || 'Automatically save scan results and deletion records'}
+                />
+                <Form.Item name="enableScanHistory" valuePropName="checked" noStyle>
+                  <Switch />
+                </Form.Item>
+              </div>
+              <div className="switch-item">
+                <LabelWithTooltip
+                  label={t('Settings.SaveThumbnails') || 'Save thumbnails in history'}
+                  tooltip={t('Settings.SaveThumbnailsTooltip') || 'Save thumbnails with history (increases storage usage)'}
+                />
+                <Form.Item name="saveThumbnailsInHistory" valuePropName="checked" noStyle>
+                  <Switch />
+                </Form.Item>
+              </div>
+            </div>
+
+            <Row gutter={[20, 16]}>
+              <Col xs={24} sm={12}>
+                <Form.Item
+                  label={<LabelWithTooltip label={t('Settings.HistoryFolder') || 'History Folder'} tooltip={t('Settings.HistoryFolderTooltip') || 'Path to the history folder'} />}
+                  name="historyFolderPath"
+                >
+                  <Input placeholder="history" />
+                </Form.Item>
+              </Col>
+              <Col xs={24} sm={12}>
+                <Form.Item
+                  label={<LabelWithTooltip label={t('Settings.HistoryRetention') || 'History Retention (days)'} tooltip={t('Settings.HistoryRetentionTooltip') || 'Number of days to keep history'} />}
+                  name="maxHistoryDays"
+                >
+                  <InputNumber min={1} max={365} style={{ width: '100%' }} />
+                </Form.Item>
+            </Col>
+            </Row>
+          </Card>
         </div>
 
-        {/* Save Button */}
-        <div style={{ marginTop: 32, textAlign: 'center' }}>
-          <Button
-            type="primary"
-            htmlType="submit"
-            className="save-button"
-            icon={<SaveOutlined />}
-            size="large"
-          >
-            {t('Settings.Save')}
-          </Button>
-        </div>
+        {/* Auto-save indicator */}
+        {isSaving && (
+          <div style={{ marginTop: 16, textAlign: 'center' }}>
+            <Text type="secondary">{t('Settings.Saving') || 'Saving...'}</Text>
+          </div>
+        )}
       </Form>
 
       {/* Folder Pickers */}

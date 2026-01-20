@@ -15,11 +15,29 @@
 //
 
 
+using VDF.Core.Trash;
+
 namespace VDF.Core {
 	public sealed class Settings {
 		public HashSet<string> IncludeList { get; } = new HashSet<string>();
 		public HashSet<string> BlackList { get; } = new HashSet<string>();
 		public HashSet<string> ExcludeFilePatterns { get; } = new HashSet<string>();
+
+		// Unified Data Folder - all data paths default to subdirectories under this folder
+		public string DataFolder = string.Empty;
+
+		// Delete Policy Settings
+		public DeleteAction DefaultDeleteAction = DeleteAction.MoveToTrash;
+		public string TrashFolderPath = ".trash";
+		public bool TrashFolderRelativeToScan = true;
+		public bool AutoExcludeTrashFolder = true;
+		public int TrashRetentionDays = 30;
+
+		// History Settings
+		public bool EnableScanHistory = true;
+		public int MaxHistoryDays = 30;
+		public bool SaveThumbnailsInHistory;
+		public string HistoryFolderPath = "history";
 
 		public bool IgnoreReadOnlyFolders;
 		public bool IgnoreReparsePoints;

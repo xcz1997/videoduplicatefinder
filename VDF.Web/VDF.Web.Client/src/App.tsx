@@ -5,6 +5,8 @@ import {
   DashboardOutlined,
   FolderOpenOutlined,
   GlobalOutlined,
+  DeleteOutlined,
+  HistoryOutlined,
 } from '@ant-design/icons';
 import { BrowserRouter as Router, Routes, Route, Link, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
@@ -13,6 +15,8 @@ import { localization } from './api';
 import Dashboard from './pages/Dashboard';
 import Settings from './pages/Settings';
 import Results from './pages/Results';
+import Trash from './pages/Trash';
+import History from './pages/History';
 
 const { Header, Sider, Content } = Layout;
 const { Title } = Typography;
@@ -28,8 +32,10 @@ const MainLayout: React.FC = () => {
   const getPageTitle = (path: string) => {
     switch(path) {
         case '/settings': return t('Settings.Tab.Settings');
-        case '/results': return 'Results'; // Key missing in current json, need fallback
-        default: return t('Settings.Tab.Scanner'); // Reuse existing keys
+        case '/results': return 'Results';
+        case '/trash': return 'Trash';
+        case '/history': return 'History';
+        default: return t('Settings.Tab.Scanner');
     }
   }
 
@@ -46,6 +52,8 @@ const MainLayout: React.FC = () => {
           items={[
             { key: '/', icon: <DashboardOutlined />, label: <Link to="/">{t('Settings.Tab.Scanner')}</Link> },
             { key: '/results', icon: <FolderOpenOutlined />, label: <Link to="/results">Results</Link> },
+            { key: '/trash', icon: <DeleteOutlined />, label: <Link to="/trash">Trash</Link> },
+            { key: '/history', icon: <HistoryOutlined />, label: <Link to="/history">History</Link> },
             { key: '/settings', icon: <SettingOutlined />, label: <Link to="/settings">{t('Settings.Tab.Settings')}</Link> },
           ]}
         />
@@ -69,6 +77,8 @@ const MainLayout: React.FC = () => {
           <Routes>
             <Route path="/" element={<Dashboard />} />
             <Route path="/results" element={<Results />} />
+            <Route path="/trash" element={<Trash />} />
+            <Route path="/history" element={<History />} />
             <Route path="/settings" element={<Settings />} />
           </Routes>
         </Content>

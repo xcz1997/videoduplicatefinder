@@ -76,19 +76,31 @@ namespace VDF.GUI.Utils {
 
 		/// <summary>
 		/// Returns the configured cache folder or the default if not configured.
+		/// If DataFolder is set and ThumbnailCacheFolder is empty, uses DataFolder/cache.
+		/// Otherwise falls back to OS-specific cache location.
 		/// </summary>
 		public static string GetCacheFolder() {
-			var customFolder = VDF.GUI.Data.SettingsFile.Instance.ThumbnailCacheFolder;
+			var settings = VDF.GUI.Data.SettingsFile.Instance;
+			var customFolder = settings.ThumbnailCacheFolder;
+			var dataFolder = settings.DataFolder;
+
+			// If custom cache folder is explicitly set, use it
 			if (!string.IsNullOrWhiteSpace(customFolder)) {
-				// Return custom folder if it's a valid path (directory will be created if needed)
 				try {
 					var fullPath = Path.GetFullPath(customFolder);
 					return fullPath;
 				}
 				catch {
-					// Invalid path, fall back to default
+					// Invalid path, fall through to other options
 				}
 			}
+
+			// If DataFolder is set, use DataFolder/cache
+			if (!string.IsNullOrWhiteSpace(dataFolder)) {
+				return VDF.Core.Utils.DataPaths.GetCacheFolder(string.Empty, dataFolder);
+			}
+
+			// Fall back to OS-specific default cache location
 			return GetDefaultCacheFolder();
 		}
 

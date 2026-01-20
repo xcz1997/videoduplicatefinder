@@ -38,6 +38,8 @@ using Avalonia.Threading;
 using FFmpeg.AutoGen;
 using ReactiveUI;
 using VDF.Core;
+using VDF.Core.History;
+using VDF.Core.Trash;
 using VDF.Core.Utils;
 using VDF.Core.ViewModels;
 using VDF.GUI.Data;
@@ -1310,6 +1312,7 @@ Non-Windows setup:
 			Scanner.Settings.IgnoreBlackPixels = SettingsFile.Instance.IgnoreBlackPixels;
 			Scanner.Settings.IgnoreWhitePixels = SettingsFile.Instance.IgnoreWhitePixels;
 			Scanner.Settings.CompareHorizontallyFlipped = SettingsFile.Instance.CompareHorizontallyFlipped;
+			Scanner.Settings.DataFolder = SettingsFile.Instance.DataFolder;
 			Scanner.Settings.CustomDatabaseFolder = SettingsFile.Instance.CustomDatabaseFolder;
 			Scanner.Settings.IncludeNonExistingFiles = SettingsFile.Instance.IncludeNonExistingFiles;
 			Scanner.Settings.FilterByFilePathContains = SettingsFile.Instance.FilterByFilePathContains;
@@ -1401,6 +1404,47 @@ Non-Windows setup:
 			thumbnailComparer.Show();
 		});
 		List<DuplicateItemVM> PossibleItemsToDelete => EnumerateAllItems().Where(d => d.Checked && d.IsVisibleInFilter).ToList();
+
+		// Trash and History managers
+		private TrashManager? _trashManager;
+		private ScanHistoryManager? _historyManager;
+
+		/// <summary>
+		/// Gets the TrashManager instance, creating it if needed.
+		/// </summary>
+		public TrashManager GetTrashManager() {
+			if (_trashManager == null) {
+				var settings = SettingsFile.Instance;
+				var trashFolder = TrashManager.ResolveTrashFolder(
+					settings.TrashFolderPath,
+					settings.TrashFolderRelativeToScan,
+					Scanner.Settings.IncludeList);
+				_trashManager = new TrashManager(trashFolder);
+			}
+			return _trashManager;
+		}
+
+		/// <summary>
+		/// Gets the ScanHistoryManager instance, creating it if needed.
+		/// </summary>
+		public ScanHistoryManager GetHistoryManager() {
+			if (_historyManager == null) {
+				var historyFolder = ScanHistoryManager.ResolveHistoryFolder(
+					SettingsFile.Instance.HistoryFolderPath,
+					SettingsFile.Instance.DataFolder);
+				_historyManager = new ScanHistoryManager(historyFolder);
+			}
+			return _historyManager;
+		}
+
+		/// <summary>
+		/// Resets the managers when settings change.
+		/// </summary>
+		public void ResetManagers() {
+			_trashManager = null;
+			_historyManager = null;
+		}
+
 		async void DeleteInternal(bool fromDisk,
 									List<DuplicateItemVM>? toDelete = null,
 									bool blackList = false,
@@ -1410,10 +1454,34 @@ Non-Windows setup:
 			toDelete ??= PossibleItemsToDelete;
 			if (toDelete.Count == 0) return;
 
+			var settings = SettingsFile.Instance;
+			var useTrashFolder = fromDisk && !permanently && !createSymbolLinksInstead
+				&& settings.DefaultDeleteAction == DeleteAction.MoveToTrash;
+
+			string deleteActionText;
+			if (!fromDisk) {
+				deleteActionText = blackList
+					? "delete selected from list (keep files) and blacklist them"
+					: "delete selected from list (keep files)";
+			}
+			else if (createSymbolLinksInstead) {
+				deleteActionText = "replace with symbolic links";
+			}
+			else if (permanently) {
+				deleteActionText = "permanently delete";
+			}
+			else if (useTrashFolder) {
+				deleteActionText = "move to trash folder";
+			}
+			else if (CoreUtils.IsWindows) {
+				deleteActionText = "move to recycle bin (if supported)";
+			}
+			else {
+				deleteActionText = "permanently delete";
+			}
+
 			MessageBoxButtons? dlgResult = await MessageBoxService.Show(
-				fromDisk
-					? $"Are you sure you want to{(CoreUtils.IsWindows && !permanently ? " move" : " permanently delete")} the selected files{(CoreUtils.IsWindows && !permanently ? " to recycle bin (only if supported, i.e. network files will be deleted instead)" : " from disk")}?"
-					: $"Are you sure to delete selected from list (keep files){(blackList ? " and blacklist them" : string.Empty)}?",
+				$"Are you sure you want to {deleteActionText} the selected files?",
 				MessageBoxButtons.Yes | MessageBoxButtons.No);
 			if (dlgResult != MessageBoxButtons.Yes) return;
 
@@ -1424,13 +1492,18 @@ Non-Windows setup:
 					   g => g.FirstOrDefault(x => !x.Checked)  // can be null if all are checked
 				   );
 
-
 			var actuallyDeleted = new HashSet<DuplicateItemVM>(toDelete.Count, ReferenceEqualityComparer<DuplicateItemVM>.Instance);
+			var deletionItems = new List<DeletionItem>();
 			long freedBytes = 0;
+			TrashManager? trashManager = useTrashFolder ? GetTrashManager() : null;
+			string? currentScanId = settings.EnableScanHistory ? GetHistoryManager().CurrentScanId : null;
+
 			foreach (var dub in toDelete) {
 				try {
-
 					var fe = new FileEntry(dub.ItemInfo.Path);
+					string? trashId = null;
+					DeleteAction actionTaken = DeleteAction.PermanentDelete;
+
 					if (fromDisk) {
 						if (createSymbolLinksInstead) {
 							var keeper = keepByGroup.TryGetValue(dub.ItemInfo.GroupId, out var k) ? k : null;
@@ -1439,7 +1512,16 @@ Non-Windows setup:
 							File.CreateSymbolicLink(dub.ItemInfo.Path, keeper.ItemInfo.Path);
 							freedBytes += dub.ItemInfo.SizeLong;
 						}
+						else if (useTrashFolder && trashManager != null) {
+							// Use our custom trash folder
+							trashId = trashManager.MoveToTrash(dub.ItemInfo.Path, currentScanId, dub.ItemInfo.GroupId);
+							if (trashId == null)
+								throw new Exception("Failed to move to trash folder");
+							freedBytes += dub.ItemInfo.SizeLong;
+							actionTaken = DeleteAction.MoveToTrash;
+						}
 						else if (CoreUtils.IsWindows && !permanently) {
+							// Windows recycle bin
 							var fs = new FileUtils.SHFILEOPSTRUCT {
 								wFunc = FileUtils.FileOperationType.FO_DELETE,
 								pFrom = dub.ItemInfo.Path + '\0' + '\0',
@@ -1452,35 +1534,52 @@ Non-Windows setup:
 							if (result != 0)
 								throw new Exception($"SHFileOperation returned: {result:X}");
 							freedBytes += dub.ItemInfo.SizeLong;
+							// Note: Windows recycle bin is a form of "MoveToTrash" but we don't track it
 						}
 						else {
+							// Permanent delete
 							File.Delete(dub.ItemInfo.Path);
 							freedBytes += dub.ItemInfo.SizeLong;
+							actionTaken = DeleteAction.PermanentDelete;
+						}
+
+						// Record deletion for history if enabled
+						if (settings.EnableScanHistory && currentScanId != null) {
+							deletionItems.Add(new DeletionItem {
+								Path = dub.ItemInfo.Path,
+								FileSize = dub.ItemInfo.SizeLong,
+								Action = actionTaken,
+								TrashId = trashId,
+								GroupId = dub.ItemInfo.GroupId
+							});
 						}
 					}
 
 					if (blackList)
 						ScanEngine.BlackListFileEntry(dub.ItemInfo.Path);
-                    else
-                        ScanEngine.RemoveFromDatabase(fe);
+					else
+						ScanEngine.RemoveFromDatabase(fe);
 
-                    actuallyDeleted.Add(dub);
+					actuallyDeleted.Add(dub);
 				}
 				catch (Exception ex) {
 					Logger.Instance.Info($"Failed to delete '{dub.ItemInfo.Path}': {ex.Message}\n{ex.StackTrace}");
 				}
 			}
 
+			// Record deletions to history
+			if (deletionItems.Count > 0 && currentScanId != null) {
+				GetHistoryManager().RecordDeletion(currentScanId, deletionItems);
+			}
+
 			if (freedBytes > 0)
 				TotalSizeRemovedInternal += freedBytes;
-
 
 			if (actuallyDeleted.Count == 0)
 				return;
 
 			ApplyDeletionsAndDropSingles(actuallyDeleted);
 			RefreshGroupStats();
-
 
 			ScanEngine.SaveDatabase();
 

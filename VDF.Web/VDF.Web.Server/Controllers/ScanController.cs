@@ -1,7 +1,10 @@
 using Microsoft.AspNetCore.Mvc;
 using VDF.Web.Server.Services;
 using VDF.GUI.Utils;
+using VDF.GUI.Data;
 using VDF.Core.FFTools;
+using VDF.Core.History;
+using VDF.Core.Trash;
 using System.Collections.Generic;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.PixelFormats;
@@ -319,17 +322,45 @@ namespace VDF.Web.Server.Controllers {
             }
         }
 
+        private TrashManager? _trashManager;
+
+        private TrashManager GetTrashManager() {
+            if (_trashManager == null) {
+                var settings = SettingsFile.Instance;
+                var trashFolder = TrashManager.ResolveTrashFolder(
+                    settings.TrashFolderPath,
+                    settings.TrashFolderRelativeToScan,
+                    _scanService.Engine.Settings.IncludeList);
+                _trashManager = new TrashManager(trashFolder);
+            }
+            return _trashManager;
+        }
+
+        private ScanHistoryManager GetHistoryManager() {
+            // Use ScanService's history manager to ensure CurrentScanId is shared
+            return _scanService.GetHistoryManager();
+        }
+
         [HttpPost("delete")]
-        public IActionResult DeleteFiles([FromBody] List<string> paths) {
+        public IActionResult DeleteFiles([FromBody] DeleteFilesRequest request) {
+            var paths = request?.Paths;
             if (paths == null || paths.Count == 0)
                 return BadRequest("No paths provided");
 
             if (_scanService.GetStatus().IsScanning)
                 return BadRequest("Cannot delete files while scanning");
 
+            var settings = SettingsFile.Instance;
+            var useTrashFolder = !request.Permanently && settings.DefaultDeleteAction == DeleteAction.MoveToTrash;
+            TrashManager? trashManager = useTrashFolder ? GetTrashManager() : null;
+            var historyManager = settings.EnableScanHistory ? GetHistoryManager() : null;
+            string? currentScanId = historyManager?.CurrentScanId;
+
             var results = new List<object>();
+            var deletionItems = new List<DeletionItem>();
             var successCount = 0;
             var failCount = 0;
+            long totalDeletedSize = 0;
 
             foreach (var path in paths) {
                 // Security check: only allow deletion of files in duplicates list
@@ -341,28 +372,87 @@ namespace VDF.Web.Server.Controllers {
                 }
 
                 try {
-                    if (System.IO.File.Exists(path)) {
-                        System.IO.File.Delete(path);
-                        // Remove from duplicates list
-                        _scanService.Engine.Duplicates.Remove(item);
-                        results.Add(new { path, success = true });
-                        successCount++;
-                    } else {
+                    if (!System.IO.File.Exists(path)) {
                         results.Add(new { path, success = false, error = "File not found" });
                         failCount++;
+                        continue;
                     }
-                } catch (Exception ex) {
+
+                    string? trashId = null;
+                    DeleteAction actionTaken = DeleteAction.PermanentDelete;
+
+                    if (useTrashFolder && trashManager != null) {
+                        // Move to trash folder
+                        trashId = trashManager.MoveToTrash(path, currentScanId, item.GroupId);
+                        if (trashId == null) {
+                            results.Add(new { path, success = false, error = "Failed to move to trash" });
+                            failCount++;
+                            continue;
+                        }
+                        actionTaken = DeleteAction.MoveToTrash;
+                    }
+                    else {
+                        // Permanent delete
+                        System.IO.File.Delete(path);
+                        actionTaken = DeleteAction.PermanentDelete;
+                    }
+
+                    // Remove from duplicates list
+                    _scanService.Engine.Duplicates.Remove(item);
+
+                    // Record deletion for history
+                    if (historyManager != null && currentScanId != null) {
+                        deletionItems.Add(new DeletionItem {
+                            Path = path,
+                            FileSize = item.SizeLong,
+                            Action = actionTaken,
+                            TrashId = trashId,
+                            GroupId = item.GroupId
+                        });
+                    }
+
+                    results.Add(new {
+                        path,
+                        success = true,
+                        action = actionTaken.ToString(),
+                        trashId,
+                        fileSize = item.SizeLong
+                    });
+                    totalDeletedSize += item.SizeLong;
+                    successCount++;
+                }
+                catch (Exception ex) {
                     results.Add(new { path, success = false, error = ex.Message });
                     failCount++;
                 }
+            }
+
+            // Record deletions to history
+            if (deletionItems.Count > 0 && historyManager != null && currentScanId != null) {
+                historyManager.RecordDeletion(currentScanId, deletionItems);
             }
 
             return Ok(new {
                 results,
                 successCount,
                 failCount,
+                totalDeletedSize,
+                totalDeletedSizeFormatted = FormatBytes(totalDeletedSize),
                 message = $"Deleted {successCount} files, {failCount} failed"
             });
+        }
+
+        private static string FormatBytes(long bytes) {
+            if (bytes == 0) return "0 B";
+            string[] sizes = { "B", "KB", "MB", "GB", "TB" };
+            int i = (int)Math.Floor(Math.Log(bytes) / Math.Log(1024));
+            if (i >= sizes.Length) i = sizes.Length - 1;
+            return Math.Round(bytes / Math.Pow(1024, i), 2) + " " + sizes[i];
+        }
+
+        public class DeleteFilesRequest {
+            public List<string> Paths { get; set; } = new();
+            public bool Permanently { get; set; }
         }
 
         [HttpGet("original")]

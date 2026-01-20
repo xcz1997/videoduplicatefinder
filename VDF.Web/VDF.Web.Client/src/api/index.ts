@@ -17,9 +17,69 @@ export const scan = {
   getRecentFiles: () => api.get('/scan/recent-files').then(res => res.data),
   clearDatabase: () => api.post('/scan/clear-database').then(res => res.data),
   cleanupDatabase: () => api.post('/scan/cleanup-database').then(res => res.data),
-  deleteFiles: (paths: string[]) => api.post('/scan/delete', paths).then(res => res.data),
+  deleteFiles: (paths: string[], permanently?: boolean) =>
+    api.post('/scan/delete', { paths, permanently: permanently ?? false }).then(res => res.data),
   saveResults: () => api.post('/scan/save-results').then(res => res.data),
 };
+
+export const trash = {
+  getItems: () => api.get('/trash').then(res => res.data),
+  getItem: (id: string) => api.get(`/trash/${id}`).then(res => res.data),
+  restore: (id: string, overwriteExisting?: boolean) =>
+    api.post(`/trash/${id}/restore`, { overwriteExisting: overwriteExisting ?? false }).then(res => res.data),
+  restoreBatch: (ids: string[], overwriteExisting?: boolean) =>
+    api.post('/trash/restore', { ids, overwriteExisting: overwriteExisting ?? false }).then(res => res.data),
+  delete: (id: string) => api.delete(`/trash/${id}`).then(res => res.data),
+  empty: () => api.delete('/trash').then(res => res.data),
+  cleanup: (days?: number) => api.post('/trash/cleanup', { days }).then(res => res.data),
+};
+
+export const history = {
+  getList: () => api.get('/history').then(res => res.data),
+  getDetails: (scanId: string) => api.get(`/history/${scanId}`).then(res => res.data),
+  getDeletions: (scanId: string) => api.get(`/history/${scanId}/deletions`).then(res => res.data),
+  delete: (scanId: string) => api.delete(`/history/${scanId}`).then(res => res.data),
+  cleanup: (days?: number) => api.post('/history/cleanup', { days }).then(res => res.data),
+  getByDateRange: (from: string, to: string) =>
+    api.get('/history/bydate', { params: { from, to } }).then(res => res.data),
+  search: (folder: string) => api.get('/history/search', { params: { folder } }).then(res => res.data),
+};
+
+export interface TrashItem {
+  id: string;
+  fileName: string;
+  originalPath: string;
+  fileSize: number;
+  sizeDisplay: string;
+  deletedAt: string;
+  deletedAgo: string;
+  scanId?: string;
+  groupId?: string;
+  fileExists: boolean;
+  canRestore: boolean;
+}
+
+export interface TrashListResponse {
+  items: TrashItem[];
+  totalSize: number;
+  itemCount: number;
+}
+
+export interface HistorySummary {
+  scanId: string;
+  timestamp: string;
+  folders: string[];
+  duplicateGroups: number;
+  duplicateItems: number;
+  totalDuplicateSize: number;
+  deletedCount: number;
+  deletedSize: number;
+}
+
+export interface HistoryListResponse {
+  entries: HistorySummary[];
+  totalCount: number;
+}
 
 export const settings = {
   get: () => api.get('/settings').then(res => res.data),
@@ -27,13 +87,50 @@ export const settings = {
   getCacheInfo: () => api.get('/settings/cache-info').then(res => res.data),
   clearCache: () => api.post('/settings/clear-cache').then(res => res.data),
   updateIncludes: (paths: string[]) => api.patch('/settings/includes', paths).then(res => res.data),
+  getDeletePolicy: () => api.get('/settings/delete-policy').then(res => res.data),
+  updateDeletePolicy: (data: DeletePolicySettings) => api.put('/settings/delete-policy', data).then(res => res.data),
+  getDeleteActions: () => api.get('/settings/delete-actions').then(res => res.data),
+  getPathsInfo: () => api.get('/settings/paths-info').then(res => res.data),
 };
+
+export interface DeletePolicySettings {
+  defaultDeleteAction: number;
+  trashFolderPath: string;
+  trashFolderRelativeToScan: boolean;
+  autoExcludeTrashFolder: boolean;
+  trashRetentionDays: number;
+  enableScanHistory: boolean;
+  maxHistoryDays: number;
+  saveThumbnailsInHistory: boolean;
+  historyFolderPath: string;
+}
+
+export interface DeleteActionOption {
+  value: number;
+  name: string;
+  description: string;
+}
 
 export interface CacheInfo {
   cacheSize: number;
   cacheSizeFormatted: string;
   cacheFolder: string;
   defaultCacheFolder: string;
+}
+
+export interface PathInfo {
+  configuredPath: string;
+  resolvedPath: string;
+  size: number;
+  sizeFormatted: string;
+}
+
+export interface PathsInfoResponse {
+  dataFolder: PathInfo;
+  databaseFolder: PathInfo;
+  cacheFolder: PathInfo;
+  historyFolder: PathInfo;
+  trashFolder: PathInfo;
 }
 
 export const localization = {

@@ -19,6 +19,7 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Xml.Linq;
 using ReactiveUI;
+using VDF.Core.Trash;
 using VDF.Core.Utils;
 
 namespace VDF.GUI.Data {
@@ -195,6 +196,14 @@ namespace VDF.GUI.Data {
 		}
 		[JsonPropertyName("CustomCommands")]
 		public CustomActionCommands CustomCommands { get; set; } = new();
+		// Unified Data Folder - all data paths default to subdirectories under this folder
+		string _DataFolder = string.Empty;
+		[JsonPropertyName("DataFolder")]
+		public string DataFolder {
+			get => _DataFolder;
+			set => this.RaiseAndSetIfChanged(ref _DataFolder, value);
+		}
+
 		string _CustomDatabaseFolder = string.Empty;
 		[JsonPropertyName("CustomDatabaseFolder")]
 		public string CustomDatabaseFolder {
@@ -312,6 +321,71 @@ namespace VDF.GUI.Data {
 		public int MinimumFileSize {
 			get => _MinimumFileSize;
 			set => this.RaiseAndSetIfChanged(ref _MinimumFileSize, value);
+		}
+
+		// Delete Policy Settings
+		DeleteAction _DefaultDeleteAction = DeleteAction.MoveToTrash;
+		[JsonPropertyName("DefaultDeleteAction")]
+		public DeleteAction DefaultDeleteAction {
+			get => _DefaultDeleteAction;
+			set => this.RaiseAndSetIfChanged(ref _DefaultDeleteAction, value);
+		}
+
+		string _TrashFolderPath = ".trash";
+		[JsonPropertyName("TrashFolderPath")]
+		public string TrashFolderPath {
+			get => _TrashFolderPath;
+			set => this.RaiseAndSetIfChanged(ref _TrashFolderPath, value);
+		}
+
+		bool _TrashFolderRelativeToScan = true;
+		[JsonPropertyName("TrashFolderRelativeToScan")]
+		public bool TrashFolderRelativeToScan {
+			get => _TrashFolderRelativeToScan;
+			set => this.RaiseAndSetIfChanged(ref _TrashFolderRelativeToScan, value);
+		}
+
+		bool _AutoExcludeTrashFolder = true;
+		[JsonPropertyName("AutoExcludeTrashFolder")]
+		public bool AutoExcludeTrashFolder {
+			get => _AutoExcludeTrashFolder;
+			set => this.RaiseAndSetIfChanged(ref _AutoExcludeTrashFolder, value);
+		}
+
+		int _TrashRetentionDays = 30;
+		[JsonPropertyName("TrashRetentionDays")]
+		public int TrashRetentionDays {
+			get => _TrashRetentionDays;
+			set => this.RaiseAndSetIfChanged(ref _TrashRetentionDays, value);
+		}
+
+		// History Settings
+		bool _EnableScanHistory = true;
+		[JsonPropertyName("EnableScanHistory")]
+		public bool EnableScanHistory {
+			get => _EnableScanHistory;
+			set => this.RaiseAndSetIfChanged(ref _EnableScanHistory, value);
+		}
+
+		int _MaxHistoryDays = 30;
+		[JsonPropertyName("MaxHistoryDays")]
+		public int MaxHistoryDays {
+			get => _MaxHistoryDays;
+			set => this.RaiseAndSetIfChanged(ref _MaxHistoryDays, value);
+		}
+
+		bool _SaveThumbnailsInHistory;
+		[JsonPropertyName("SaveThumbnailsInHistory")]
+		public bool SaveThumbnailsInHistory {
+			get => _SaveThumbnailsInHistory;
+			set => this.RaiseAndSetIfChanged(ref _SaveThumbnailsInHistory, value);
+		}
+
+		string _HistoryFolderPath = "history";
+		[JsonPropertyName("HistoryFolderPath")]
+		public string HistoryFolderPath {
+			get => _HistoryFolderPath;
+			set => this.RaiseAndSetIfChanged(ref _HistoryFolderPath, value);
 		}
 
 		public static void LoadSettings(string? path = null) {
