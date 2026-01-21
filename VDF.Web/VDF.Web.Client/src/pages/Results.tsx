@@ -1,10 +1,11 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { Card, Table, Image, Button, Space, Empty, Tag, Tooltip, message, Modal } from 'antd';
 import { useRequest } from 'ahooks';
 import { useTranslation } from 'react-i18next';
 import { scan } from '../api';
-import { FileImageOutlined, VideoCameraOutlined, DeleteOutlined, CheckCircleOutlined, StarFilled, ExclamationCircleOutlined, SaveOutlined, EyeOutlined, HddOutlined } from '@ant-design/icons';
+import { FileImageOutlined, VideoCameraOutlined, DeleteOutlined, CheckCircleOutlined, StarFilled, ExclamationCircleOutlined, SaveOutlined, FolderOpenOutlined, EyeOutlined, HddOutlined } from '@ant-design/icons';
 import ThumbnailPreview from '../components/ThumbnailPreview';
+import SavedResultsModal from '../components/SavedResultsModal';
 
 interface DuplicateItem {
   path: string;
@@ -15,6 +16,7 @@ interface DuplicateItem {
   hasThumbnail: boolean;
   thumbnailCount: number;
   isImage: boolean;
+  isDeleted?: boolean;
   // Best flags
   isBestSize?: boolean;
   isBestDuration?: boolean;
@@ -50,13 +52,68 @@ const Results: React.FC = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [deleting, setDeleting] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [loading, setLoading] = useState(false);
   const [previewItem, setPreviewItem] = useState<DuplicateItem | null>(null);
+  const [savedResultsModalVisible, setSavedResultsModalVisible] = useState(false);
 
   // 计算所有 groupId 用于默认展开
   const allGroupIds = useMemo(() => {
     if (!data || data.length === 0) return [];
     return data.map((g: DuplicateGroup) => g.groupId);
   }, [data]);
+
+  // Load results function (supports optional ID for specific saved results)
+  const doLoadResults = async (id?: string) => {
+    setLoading(true);
+    try {
+      const result = await scan.loadResults(id);
+      if (result.success) {
+        message.success(t('Results.LoadSuccess', { count: result.count, skipped: result.skipped || 0 }));
+        setSelectedItems(new Set());
+        refresh();
+      } else {
+        message.warning(result.message || t('Results.LoadFailed'));
+      }
+    } catch {
+      message.error(t('Results.LoadFailed'));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Ref to prevent duplicate modal in React strict mode
+  const hasCheckedSavedResults = useRef(false);
+
+  // Check for saved results on mount and prompt to load if available
+  useEffect(() => {
+    // Prevent duplicate check in React strict mode
+    if (hasCheckedSavedResults.current) return;
+    hasCheckedSavedResults.current = true;
+
+    const checkSavedResults = async () => {
+      // Only check if there are no current results
+      if (data && data.length > 0) return;
+
+      try {
+        const result = await scan.hasSavedResults();
+        if (result.exists && result.count > 0) {
+          Modal.confirm({
+            title: t('Results.SavedResultsFound'),
+            icon: <ExclamationCircleOutlined />,
+            content: t('Results.LoadSavedResultsPrompt', { count: result.count }),
+            okText: t('Results.LoadResults'),
+            cancelText: t('Dialog.Cancel'),
+            onOk: () => setSavedResultsModalVisible(true)
+          });
+        }
+      } catch {
+        // Ignore errors silently
+      }
+    };
+
+    checkSavedResults();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Calculate selected items total size
   const selectedTotalSize = useMemo(() => {
@@ -72,12 +129,14 @@ const Results: React.FC = () => {
     return total;
   }, [data, selectedItems]);
 
-  // Calculate best item in a group based on multiple criteria
+  // Calculate best item in a group based on multiple criteria (only non-deleted items)
   const getBestItemInGroup = (items: DuplicateItem[]): string | null => {
-    if (items.length === 0) return null;
+    // Filter out deleted items
+    const availableItems = items.filter(item => !item.isDeleted);
+    if (availableItems.length === 0) return null;
 
     // Score each item: higher is better
-    const scored = items.map(item => {
+    const scored = availableItems.map(item => {
       let score = 0;
       if (item.isBestFrameSize) score += 3; // Resolution is most important
       if (item.isBestDuration) score += 2;  // Duration second
@@ -98,9 +157,10 @@ const Results: React.FC = () => {
     const bestPath = getBestItemInGroup(group.items);
     if (!bestPath) return;
 
-    // Select all items except the best one (those will be candidates for deletion)
+    // Select all non-deleted items except the best one (those will be candidates for deletion)
     const newSelected = new Set(selectedItems);
     group.items.forEach(item => {
+      if (item.isDeleted) return; // Skip deleted items
       if (item.path !== bestPath) {
         newSelected.add(item.path);
       } else {
@@ -124,6 +184,7 @@ const Results: React.FC = () => {
       const bestPath = getBestItemInGroup(group.items);
       if (!bestPath) return;
       group.items.forEach(item => {
+        if (item.isDeleted) return; // Skip deleted items
         if (item.path !== bestPath) {
           newSelected.add(item.path);
         } else {
@@ -144,6 +205,7 @@ const Results: React.FC = () => {
       const bestPath = getBestItemInGroup(group.items);
       if (!bestPath) return;
       group.items.forEach(item => {
+        if (item.isDeleted) return; // Skip deleted items
         if (item.path !== bestPath) {
           newSelected.add(item.path);
         } else {
@@ -214,6 +276,34 @@ const Results: React.FC = () => {
       message.error(t('Results.SaveFailed'));
     } finally {
       setSaving(false);
+    }
+  };
+
+  // Load results - open modal to select saved results
+  const handleLoadResults = () => {
+    setSavedResultsModalVisible(true);
+  };
+
+  // Handle loading a specific saved result from the modal
+  const handleLoadSelectedResult = async (id: string) => {
+    if (data && data.length > 0) {
+      // Show confirmation if there are current results
+      return new Promise<void>((resolve, reject) => {
+        Modal.confirm({
+          title: t('Results.LoadConfirmTitle'),
+          icon: <ExclamationCircleOutlined />,
+          content: t('Results.LoadConfirmContent'),
+          okText: t('Dialog.Yes'),
+          cancelText: t('Dialog.Cancel'),
+          onOk: async () => {
+            await doLoadResults(id);
+            resolve();
+          },
+          onCancel: () => reject()
+        });
+      });
+    } else {
+      await doLoadResults(id);
     }
   };
 
@@ -309,7 +399,18 @@ const Results: React.FC = () => {
                 )
               )
             },
-          { title: t('DuplicateList.Header.Path'), dataIndex: 'path', key: 'path', ellipsis: true },
+          {
+            title: t('DuplicateList.Header.Path'),
+            dataIndex: 'path',
+            key: 'path',
+            ellipsis: true,
+            render: (path: string, item: DuplicateItem) => (
+              <Space>
+                <span style={{ opacity: item.isDeleted ? 0.5 : 1 }}>{path}</span>
+                {item.isDeleted && <Tag color="red">{t('Results.Deleted')}</Tag>}
+              </Space>
+            )
+          },
           {
             title: t('DuplicateList.Header.Size'),
             dataIndex: 'sizeLong',
@@ -339,23 +440,33 @@ const Results: React.FC = () => {
             width: 100,
             render: (_: any, item: DuplicateItem) => (
               <Space>
-                <Tooltip title={selectedItems.has(item.path) ? t('Results.Deselect') : t('Results.Select')}>
-                  <Button
-                    type={selectedItems.has(item.path) ? "primary" : "default"}
-                    size="small"
-                    icon={<CheckCircleOutlined />}
-                    onClick={() => {
-                      const newSelected = new Set(selectedItems);
-                      if (newSelected.has(item.path)) {
-                        newSelected.delete(item.path);
-                      } else {
-                        newSelected.add(item.path);
-                      }
-                      setSelectedItems(newSelected);
-                    }}
-                  />
-                </Tooltip>
-                <Button type="text" danger icon={<DeleteOutlined />} />
+                {item.isDeleted ? (
+                  <Tooltip title={t('Results.AlreadyDeleted')}>
+                    <Button
+                      size="small"
+                      icon={<CheckCircleOutlined />}
+                      disabled
+                    />
+                  </Tooltip>
+                ) : (
+                  <Tooltip title={selectedItems.has(item.path) ? t('Results.Deselect') : t('Results.Select')}>
+                    <Button
+                      type={selectedItems.has(item.path) ? "primary" : "default"}
+                      size="small"
+                      icon={<CheckCircleOutlined />}
+                      onClick={() => {
+                        const newSelected = new Set(selectedItems);
+                        if (newSelected.has(item.path)) {
+                          newSelected.delete(item.path);
+                        } else {
+                          newSelected.add(item.path);
+                        }
+                        setSelectedItems(newSelected);
+                      }}
+                    />
+                  </Tooltip>
+                )}
+                <Button type="text" danger icon={<DeleteOutlined />} disabled={item.isDeleted} />
               </Space>
             )
           }
@@ -364,7 +475,12 @@ const Results: React.FC = () => {
         pagination={false}
         rowKey="path"
         size="small"
-        rowClassName={(item: DuplicateItem) => selectedItems.has(item.path) ? 'selected-row' : ''}
+        rowClassName={(item: DuplicateItem) => {
+          const classes = [];
+          if (item.isDeleted) classes.push('deleted-row');
+          if (selectedItems.has(item.path)) classes.push('selected-row');
+          return classes.join(' ');
+        }}
         />
       </>
     );
@@ -405,6 +521,13 @@ const Results: React.FC = () => {
           >
             {t('Results.SaveResults')}
           </Button>
+          <Button
+            icon={<FolderOpenOutlined />}
+            onClick={handleLoadResults}
+            loading={loading}
+          >
+            {t('Results.LoadResults')}
+          </Button>
           <Button onClick={refresh}>{t('Results.Refresh')}</Button>
         </Space>
       }
@@ -428,6 +551,13 @@ const Results: React.FC = () => {
         .selected-row {
           background-color: #e6f7ff !important;
         }
+        .deleted-row {
+          background-color: #f5f5f5 !important;
+          opacity: 0.6;
+        }
+        .deleted-row:hover > td {
+          background-color: #e8e8e8 !important;
+        }
         .selected-row:hover > td {
           background-color: #bae7ff !important;
         }
@@ -446,6 +576,13 @@ const Results: React.FC = () => {
         path={previewItem?.path || ''}
         thumbnailCount={previewItem?.thumbnailCount || 1}
         isImage={previewItem?.isImage || false}
+      />
+
+      {/* Saved Results Selection Modal */}
+      <SavedResultsModal
+        visible={savedResultsModalVisible}
+        onClose={() => setSavedResultsModalVisible(false)}
+        onLoad={handleLoadSelectedResult}
       />
     </Card>
   );

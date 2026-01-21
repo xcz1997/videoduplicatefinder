@@ -104,7 +104,14 @@ namespace VDF.Core.ViewModels {
 			}
 		}
 		public long SizeLong { get; set; }
+		/// <summary>
+		/// Indicates this item has the smallest file size in the group (best for saving space)
+		/// </summary>
 		public bool IsBestSize { get; set; }
+		/// <summary>
+		/// Indicates this item has the largest file size in the group (best quality - higher compression quality)
+		/// </summary>
+		public bool IsBestSizeForQuality { get; set; }
 		public string Size => SizeLong.BytesToString();
 		public float Similarity { get; set; }
 		public string Folder { get; set; }

@@ -202,6 +202,7 @@ namespace VDF.GUI.ViewModels {
 			"FPS" => list.Count(d => d.ItemInfo.Fps == keep.ItemInfo.Fps) > 1,
 			"Bitrate" => list.Count(d => d.ItemInfo.BitRateKbs == keep.ItemInfo.BitRateKbs) > 1,
 			"Audio Bitrate" => list.Count(d => d.ItemInfo.AudioSampleRate == keep.ItemInfo.AudioSampleRate) > 1,
+			"File Size (Quality)" => list.Count(d => d.ItemInfo.SizeLong == keep.ItemInfo.SizeLong) > 1,
 			_ => false
 		};
 		static DuplicateItemVM ApplyCriterion(string criterion, List<DuplicateItemVM> list) => criterion switch {
@@ -210,6 +211,7 @@ namespace VDF.GUI.ViewModels {
 			"FPS" => list.OrderByDescending(d => d.ItemInfo.Fps).First(),
 			"Bitrate" => list.OrderByDescending(d => d.ItemInfo.BitRateKbs).First(),
 			"Audio Bitrate" => list.OrderByDescending(d => d.ItemInfo.AudioSampleRate).First(),
+			"File Size (Quality)" => list.OrderByDescending(d => d.ItemInfo.SizeLong).First(), // Larger = better quality
 			_ => list[0]
 		};
 	}

@@ -79,7 +79,9 @@ namespace VDF.Web.Server.Controllers {
                         d.BitRateKbs,
                         d.AudioSampleRate,
                         // Cache key for thumbnail retrieval
-                        ThumbnailCacheKey = d.ThumbnailCacheKey
+                        ThumbnailCacheKey = d.ThumbnailCacheKey,
+                        // Check if file has been deleted
+                        IsDeleted = !System.IO.File.Exists(d.Path)
                     }).ToList()
                 }).ToList();
 
@@ -271,40 +273,45 @@ namespace VDF.Web.Server.Controllers {
                 return Ok(new { success = true, message = "No results to save", count = 0 });
 
             try {
-                // Get backup file path (same logic as GUI)
-                var settings = VDF.GUI.Data.SettingsFile.Instance;
-                var backupPath = Directory.Exists(settings.CustomDatabaseFolder)
-                    ? Path.Combine(settings.CustomDatabaseFolder, "backup.scanresults.json")
-                    : Path.Combine(VDF.Core.Utils.CoreUtils.CurrentFolder, "backup.scanresults.json");
+                var backupFolder = GetBackupFolder();
+                var timestamp = DateTime.Now.ToString("yyyyMMdd_HHmmss");
+                var fileName = $"scanresults.{timestamp}.json";
+                var backupPath = Path.Combine(backupFolder, fileName);
 
-                // Serialize duplicates to JSON
+                // Count groups
+                var groupCount = duplicates.Select(d => d.GroupId).Distinct().Count();
+
+                // Create metadata wrapper
+                var saveWrapper = new SavedResultsFile {
+                    SavedAt = DateTime.Now,
+                    ItemCount = duplicates.Count,
+                    GroupCount = groupCount,
+                    Items = duplicates.Select(d => new SavedDuplicateItem {
+                        Path = d.Path,
+                        SizeLong = d.SizeLong,
+                        Duration = d.Duration,
+                        FrameSize = d.FrameSize,
+                        Similarity = d.Similarity,
+                        GroupId = d.GroupId,
+                        IsImage = d.IsImage,
+                        Fps = d.Fps,
+                        BitRateKbs = d.BitRateKbs,
+                        AudioSampleRate = d.AudioSampleRate,
+                        IsBestSize = d.IsBestSize,
+                        IsBestDuration = d.IsBestDuration,
+                        IsBestFrameSize = d.IsBestFrameSize,
+                        IsBestFps = d.IsBestFps,
+                        IsBestBitRateKbs = d.IsBestBitRateKbs,
+                        IsBestAudioSampleRate = d.IsBestAudioSampleRate
+                    }).ToList()
+                };
+
                 var options = new JsonSerializerOptions {
                     WriteIndented = true,
                     IncludeFields = true
                 };
 
-                // Create a simplified structure for saving
-                var saveData = duplicates.Select(d => new {
-                    d.Path,
-                    d.SizeLong,
-                    d.Duration,
-                    d.FrameSize,
-                    d.Similarity,
-                    d.GroupId,
-                    d.IsImage,
-                    d.Fps,
-                    d.BitRateKbs,
-                    d.AudioSampleRate,
-                    d.IsBestSize,
-                    d.IsBestDuration,
-                    d.IsBestFrameSize,
-                    d.IsBestFps,
-                    d.IsBestBitRateKbs,
-                    d.IsBestAudioSampleRate,
-                    d.ThumbnailCacheKey
-                }).ToList();
-
-                var json = JsonSerializer.Serialize(saveData, options);
+                var json = JsonSerializer.Serialize(saveWrapper, options);
                 System.IO.File.WriteAllText(backupPath, json);
 
                 // Also save the database
@@ -314,12 +321,242 @@ namespace VDF.Web.Server.Controllers {
                     success = true,
                     message = "Results saved successfully",
                     count = duplicates.Count,
+                    groupCount,
+                    fileName,
                     path = backupPath
                 });
             }
             catch (Exception ex) {
                 return StatusCode(500, new { success = false, message = ex.Message });
             }
+        }
+
+        [HttpGet("saved-results")]
+        public IActionResult GetSavedResultsList() {
+            try {
+                var backupFolder = GetBackupFolder();
+                var files = Directory.GetFiles(backupFolder, "scanresults.*.json")
+                    .Select(f => {
+                        var fileInfo = new FileInfo(f);
+                        var fileName = Path.GetFileName(f);
+
+                        // Try to read metadata from file
+                        int itemCount = 0;
+                        int groupCount = 0;
+                        DateTime? savedAt = null;
+
+                        try {
+                            var json = System.IO.File.ReadAllText(f);
+                            var options = new JsonSerializerOptions {
+                                PropertyNameCaseInsensitive = true,
+                                IncludeFields = true
+                            };
+                            var wrapper = JsonSerializer.Deserialize<SavedResultsFile>(json, options);
+                            if (wrapper != null) {
+                                itemCount = wrapper.ItemCount;
+                                groupCount = wrapper.GroupCount;
+                                savedAt = wrapper.SavedAt;
+                            }
+                        }
+                        catch {
+                            // Fall back to file info if metadata read fails
+                        }
+
+                        return new {
+                            id = fileName,
+                            fileName,
+                            savedAt = savedAt ?? fileInfo.CreationTime,
+                            itemCount,
+                            groupCount,
+                            fileSize = fileInfo.Length,
+                            fileSizeFormatted = FormatBytes(fileInfo.Length)
+                        };
+                    })
+                    .OrderByDescending(f => f.savedAt)
+                    .ToList();
+
+                return Ok(new {
+                    success = true,
+                    items = files,
+                    count = files.Count
+                });
+            }
+            catch (Exception ex) {
+                return StatusCode(500, new { success = false, message = ex.Message });
+            }
+        }
+
+        [HttpPost("load-results")]
+        public IActionResult LoadResults([FromBody] LoadResultsRequest? request) {
+            if (_scanService.GetStatus().IsScanning)
+                return BadRequest("Cannot load results while scanning");
+
+            try {
+                var backupFolder = GetBackupFolder();
+                string backupPath;
+
+                if (string.IsNullOrEmpty(request?.Id)) {
+                    // Load the most recent file if no ID specified
+                    var files = Directory.GetFiles(backupFolder, "scanresults.*.json")
+                        .OrderByDescending(f => new FileInfo(f).CreationTime)
+                        .ToList();
+
+                    if (files.Count == 0)
+                        return Ok(new { success = false, message = "No saved results found", count = 0 });
+
+                    backupPath = files[0];
+                }
+                else {
+                    backupPath = Path.Combine(backupFolder, request.Id);
+                    if (!System.IO.File.Exists(backupPath))
+                        return Ok(new { success = false, message = "Saved results file not found", count = 0 });
+                }
+
+                var json = System.IO.File.ReadAllText(backupPath);
+                var options = new JsonSerializerOptions {
+                    PropertyNameCaseInsensitive = true,
+                    IncludeFields = true
+                };
+
+                List<SavedDuplicateItem>? savedItems = null;
+
+                // Try to parse as new format (with wrapper)
+                try {
+                    var wrapper = JsonSerializer.Deserialize<SavedResultsFile>(json, options);
+                    if (wrapper?.Items != null) {
+                        savedItems = wrapper.Items;
+                    }
+                }
+                catch {
+                    // Try old format (direct array)
+                    savedItems = JsonSerializer.Deserialize<List<SavedDuplicateItem>>(json, options);
+                }
+
+                if (savedItems == null || savedItems.Count == 0)
+                    return Ok(new { success = false, message = "Saved results file is empty", count = 0 });
+
+                // Don't filter out deleted files - let them show as deleted in UI
+                // Clear current duplicates and load from saved data
+                _scanService.Engine.Duplicates.Clear();
+
+                foreach (var saved in savedItems) {
+                    var item = new VDF.Core.ViewModels.DuplicateItem {
+                        Path = saved.Path,
+                        SizeLong = saved.SizeLong,
+                        GroupId = saved.GroupId,
+                        Similarity = saved.Similarity,
+                        FrameSize = saved.FrameSize,
+                        IsBestSize = saved.IsBestSize,
+                        IsBestDuration = saved.IsBestDuration,
+                        IsBestFrameSize = saved.IsBestFrameSize,
+                        IsBestFps = saved.IsBestFps,
+                        IsBestBitRateKbs = saved.IsBestBitRateKbs,
+                        IsBestAudioSampleRate = saved.IsBestAudioSampleRate
+                    };
+                    SetPrivateProperty(item, "Duration", saved.Duration);
+                    SetPrivateProperty(item, "IsImage", saved.IsImage);
+                    SetPrivateProperty(item, "Fps", saved.Fps);
+                    SetPrivateProperty(item, "BitRateKbs", saved.BitRateKbs);
+                    SetPrivateProperty(item, "AudioSampleRate", saved.AudioSampleRate);
+
+                    _scanService.Engine.Duplicates.Add(item);
+                }
+
+                return Ok(new {
+                    success = true,
+                    message = $"Loaded {savedItems.Count} items",
+                    count = savedItems.Count
+                });
+            }
+            catch (JsonException) {
+                return StatusCode(500, new { success = false, message = "Failed to parse saved results file" });
+            }
+            catch (Exception ex) {
+                return StatusCode(500, new { success = false, message = ex.Message });
+            }
+        }
+
+        [HttpDelete("saved-results/{id}")]
+        public IActionResult DeleteSavedResults(string id) {
+            try {
+                var backupFolder = GetBackupFolder();
+                var backupPath = Path.Combine(backupFolder, id);
+
+                if (!System.IO.File.Exists(backupPath))
+                    return NotFound(new { success = false, message = "Saved results file not found" });
+
+                // Security check: ensure file is in backup folder
+                if (!backupPath.StartsWith(backupFolder))
+                    return BadRequest(new { success = false, message = "Invalid file path" });
+
+                System.IO.File.Delete(backupPath);
+
+                return Ok(new { success = true, message = "Saved results deleted successfully" });
+            }
+            catch (Exception ex) {
+                return StatusCode(500, new { success = false, message = ex.Message });
+            }
+        }
+
+        [HttpGet("has-saved-results")]
+        public IActionResult HasSavedResults() {
+            try {
+                var backupFolder = GetBackupFolder();
+                var files = Directory.GetFiles(backupFolder, "scanresults.*.json");
+                return Ok(new { exists = files.Length > 0, count = files.Length });
+            }
+            catch {
+                return Ok(new { exists = false, count = 0 });
+            }
+        }
+
+        private static string GetBackupFolder() {
+            var settings = VDF.GUI.Data.SettingsFile.Instance;
+            var folder = Directory.Exists(settings.CustomDatabaseFolder)
+                ? settings.CustomDatabaseFolder
+                : VDF.Core.Utils.CoreUtils.CurrentFolder;
+
+            if (!Directory.Exists(folder))
+                Directory.CreateDirectory(folder);
+
+            return folder;
+        }
+
+        public class LoadResultsRequest {
+            public string? Id { get; set; }
+        }
+
+        public class SavedResultsFile {
+            public DateTime SavedAt { get; set; }
+            public int ItemCount { get; set; }
+            public int GroupCount { get; set; }
+            public List<SavedDuplicateItem> Items { get; set; } = new();
+        }
+
+        private static void SetPrivateProperty(object obj, string propertyName, object value) {
+            var prop = obj.GetType().GetProperty(propertyName);
+            if (prop != null && prop.CanWrite) {
+                prop.SetValue(obj, value);
+            }
+        }
+
+        public class SavedDuplicateItem {
+            public string Path { get; set; } = string.Empty;
+            public long SizeLong { get; set; }
+            public TimeSpan Duration { get; set; }
+            public string? FrameSize { get; set; }
+            public float Similarity { get; set; }
+            public Guid GroupId { get; set; }
+            public bool IsImage { get; set; }
+            public float Fps { get; set; }
+            public decimal BitRateKbs { get; set; }
+            public int AudioSampleRate { get; set; }
+            public bool IsBestSize { get; set; }
+            public bool IsBestDuration { get; set; }
+            public bool IsBestFrameSize { get; set; }
+            public bool IsBestFps { get; set; }
+            public bool IsBestBitRateKbs { get; set; }
+            public bool IsBestAudioSampleRate { get; set; }
         }
 
         private TrashManager? _trashManager;
@@ -397,8 +634,8 @@ namespace VDF.Web.Server.Controllers {
                         actionTaken = DeleteAction.PermanentDelete;
                     }
 
-                    // Remove from duplicates list
-                    _scanService.Engine.Duplicates.Remove(item);
+                    // Keep item in duplicates list but it will be marked as deleted
+                    // via IsDeleted field in GetResults (file no longer exists)
 
                     // Record deletion for history
                     if (historyManager != null && currentScanId != null) {

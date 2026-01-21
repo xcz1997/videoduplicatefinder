@@ -755,6 +755,15 @@ namespace VDF.Core {
 						break;
 					otherItem.IsBestSize = true;
 				}
+				//Size for Quality (largest = best quality/compression)
+				groupItems = groupItems.OrderByDescending(d => d.SizeLong);
+				bestMatch = groupItems.First();
+				bestMatch.IsBestSizeForQuality = true;
+				foreach (DuplicateItem otherItem in groupItems.Skip(1)) {
+					if (otherItem.SizeLong < bestMatch.SizeLong)
+						break;
+					otherItem.IsBestSizeForQuality = true;
+				}
 				//Fps
 				if (!groupItems.First().IsImage) {
 					groupItems = groupItems.OrderByDescending(d => d.Fps);

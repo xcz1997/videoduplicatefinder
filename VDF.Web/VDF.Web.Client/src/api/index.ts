@@ -20,7 +20,27 @@ export const scan = {
   deleteFiles: (paths: string[], permanently?: boolean) =>
     api.post('/scan/delete', { paths, permanently: permanently ?? false }).then(res => res.data),
   saveResults: () => api.post('/scan/save-results').then(res => res.data),
+  getSavedResultsList: () => api.get('/scan/saved-results').then(res => res.data),
+  loadResults: (id?: string) => api.post('/scan/load-results', { id }).then(res => res.data),
+  deleteSavedResults: (id: string) => api.delete(`/scan/saved-results/${encodeURIComponent(id)}`).then(res => res.data),
+  hasSavedResults: () => api.get('/scan/has-saved-results').then(res => res.data),
 };
+
+export interface SavedResultsItem {
+  id: string;
+  fileName: string;
+  savedAt: string;
+  itemCount: number;
+  groupCount: number;
+  fileSize: number;
+  fileSizeFormatted: string;
+}
+
+export interface SavedResultsListResponse {
+  success: boolean;
+  items: SavedResultsItem[];
+  count: number;
+}
 
 export const trash = {
   getItems: () => api.get('/trash').then(res => res.data),

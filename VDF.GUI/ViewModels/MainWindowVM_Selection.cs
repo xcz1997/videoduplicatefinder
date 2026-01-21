@@ -32,7 +32,7 @@ using VDF.GUI.Views;
 namespace VDF.GUI.ViewModels {
 	public partial class MainWindowVM : ReactiveObject {
 
-		public List<string> QualityCriteriaOrder { get; set; } = ["Duration", "Resolution", "FPS", "Bitrate", "Audio Bitrate"];
+		public List<string> QualityCriteriaOrder { get; set; } = ["Resolution", "Bitrate", "FPS", "Duration", "Audio Bitrate", "File Size (Quality)"];
 
 		public ReactiveCommand<Unit, Unit> OpenCustomSelectionCommand => ReactiveCommand.Create(() => {
 			CustomSelectionView dlg = new(string.Empty);
@@ -110,7 +110,10 @@ namespace VDF.GUI.ViewModels {
 			}
 		});
 
-		public ReactiveCommand<Unit, Unit> CheckWhenIdenticalButSizeCommand => ReactiveCommand.Create(() => {
+		/// <summary>
+		/// Select 100% identical except size, keep smallest (save space strategy)
+		/// </summary>
+		public ReactiveCommand<Unit, Unit> CheckWhenIdenticalKeepSmallestCommand => ReactiveCommand.Create(() => {
 			HashSet<Guid> blackListGroupID = new();
 
 			foreach (var first in EnumerateAllItems()) {
@@ -128,6 +131,33 @@ namespace VDF.GUI.ViewModels {
 				blackListGroupID.Add(first.ItemInfo.GroupId);
 			}
 		});
+
+		/// <summary>
+		/// Select 100% identical except size, keep largest (best quality strategy)
+		/// For same resolution, larger file usually means higher compression quality
+		/// </summary>
+		public ReactiveCommand<Unit, Unit> CheckWhenIdenticalKeepBestQualityCommand => ReactiveCommand.Create(() => {
+			HashSet<Guid> blackListGroupID = new();
+
+			foreach (var first in EnumerateAllItems()) {
+				if (blackListGroupID.Contains(first.ItemInfo.GroupId)) continue; //Dup has been handled already
+				var l = EnumerateAllItems().Where(d => d.IsVisibleInFilter && d.EqualsButSize(first) && !d.ItemInfo.Path.Equals(first.ItemInfo.Path));
+				var dupMods = l as List<DuplicateItemVM> ?? l.ToList();
+				if (!dupMods.Any()) continue;
+				dupMods.Add(first);
+				dupMods = dupMods.OrderByDescending(s => s.ItemInfo.SizeLong).ToList(); // Keep largest = best quality
+				dupMods[0].Checked = false;
+				for (int i = 1; i < dupMods.Count; i++) {
+					dupMods[i].Checked = true;
+				}
+
+				blackListGroupID.Add(first.ItemInfo.GroupId);
+			}
+		});
+
+		// Keep old name as alias for backward compatibility
+		public ReactiveCommand<Unit, Unit> CheckWhenIdenticalButSizeCommand => CheckWhenIdenticalKeepSmallestCommand;
+
 		public ReactiveCommand<Unit, Unit> CheckOldestCommand => ReactiveCommand.Create(() => {
 			HashSet<Guid> blackListGroupID = new();
 

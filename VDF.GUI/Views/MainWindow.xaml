@@ -460,9 +460,14 @@
                                                 <TextBlock VerticalAlignment="Center" Text="{Binding Source={x:Static local:App.Lang}, Path=[Selection.IdenticalKeepFirst]}" />
                                             </MenuItem.Header>
                                         </MenuItem>
-                                        <MenuItem Command="{Binding CheckWhenIdenticalButSizeCommand}">
+                                        <MenuItem Command="{Binding CheckWhenIdenticalKeepSmallestCommand}">
                                             <MenuItem.Header>
                                                 <TextBlock VerticalAlignment="Center" Text="{Binding Source={x:Static local:App.Lang}, Path=[Selection.IdenticalKeepSmallest]}" />
+                                            </MenuItem.Header>
+                                        </MenuItem>
+                                        <MenuItem Command="{Binding CheckWhenIdenticalKeepBestQualityCommand}">
+                                            <MenuItem.Header>
+                                                <TextBlock VerticalAlignment="Center" Text="{Binding Source={x:Static local:App.Lang}, Path=[Selection.IdenticalKeepBestQuality]}" />
                                             </MenuItem.Header>
                                         </MenuItem>
                                         <MenuItem Command="{Binding CheckLowestQualityCommand}">
